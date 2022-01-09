@@ -73,3 +73,32 @@ extension EventStream {
             .map { first, last in (first.0, first.1, first.2, first.3, last) }
     }
 }
+
+extension Array where Element: EventStreamProtocol {
+
+    public func combineLatest() -> EventStream<[Element.Payload]> {
+
+        var values: [Element.Payload?] = self.map { _ in nil }
+
+        let stream = EventStream<[Element.Payload]>()
+
+        let send: () -> Void = {
+
+            let readyValues = values.compactMap { value in value }
+            guard readyValues.count == values.count else { return }
+            
+            stream.publish(readyValues)
+        }
+
+        self.enumerated().forEach { index, sourceStream in
+
+            stream.subscriptions.insert(sourceStream.subscribe { event in
+                
+                values[index] = event
+                send()
+            })
+        }
+
+        return stream
+    }
+}

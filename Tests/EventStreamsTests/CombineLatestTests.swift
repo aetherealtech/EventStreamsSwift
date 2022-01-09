@@ -63,4 +63,47 @@ class CombineLatestTests: XCTestCase {
             first.4 == second.4
         }))
     }
+    
+    func testCombineLatestArray() throws {
+                
+        let sources: [AnyTypedChannel<String>] = (0..<10).map { _ in
+            
+            SimpleChannel().asTypedChannel()
+        }
+        
+        let sourceStreams = sources.map { source in
+            
+            EventStream<String>(source: source)
+        }
+
+        var expectedEvents = [[String]]()
+        
+        let combinedStream = sourceStreams.combineLatest()
+
+        var receivedEvents = [[String]]()
+        
+        let subscription = combinedStream.subscribe { event in receivedEvents.append(event) }
+        
+        for (index, source) in sources.enumerated() {
+            
+            source.publish("Initial \(index)");
+        }
+        
+        let initialEvent = sources.indices.map { index in "Initial \(index)"}
+        expectedEvents.append(initialEvent)
+
+        var nextEvent = initialEvent
+        
+        for index in sources.indices {
+            
+            let value = "Next \(index)"
+            
+            sources[index].publish(value)
+            nextEvent[index] = value
+            
+            expectedEvents.append(nextEvent)
+        }
+
+        XCTAssertEqual(receivedEvents, expectedEvents)
+    }
 }
