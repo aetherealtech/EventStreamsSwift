@@ -7,6 +7,6 @@ import XCTest
 import Observer
 @testable import EventStreams
 
-class EventStreamTests: XCTestCase {
+class SwitchTests: XCTestCase {
     
 }
