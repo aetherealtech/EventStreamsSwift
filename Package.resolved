@@ -2,11 +2,20 @@
   "object": {
     "pins": [
       {
-        "package": "Observer",
-        "repositoryURL": "https://github.com/aetherealtech/ObserverSwift.git",
+        "package": "CoreExtensions",
+        "repositoryURL": "https://github.com/aetherealtech/SwiftCoreExtensions.git",
         "state": {
           "branch": "master",
-          "revision": "060c59496b8567c0fc9a40896d8d54a8293a63f6",
+          "revision": "242842a867df017a91c58d1b684ce375684e4951",
+          "version": null
+        }
+      },
+      {
+        "package": "Observer",
+        "repositoryURL": "https://github.com/aetherealtech/SwiftObserver.git",
+        "state": {
+          "branch": "master",
+          "revision": "4c35dc32935467095111a7d587f7b3ed95512881",
           "version": null
         }
       }
