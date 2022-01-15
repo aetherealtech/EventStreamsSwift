@@ -19,8 +19,8 @@ class CombineLatestTests: XCTestCase {
         }
         
         let sourceStreams = sources.map { source in
-            
-            EventStream<String>(source: source)
+
+            source.asStream()
         }
 
         var expectedEvents = [Combined]()
@@ -72,8 +72,8 @@ class CombineLatestTests: XCTestCase {
         }
         
         let sourceStreams = sources.map { source in
-            
-            EventStream<String>(source: source)
+
+            source.asStream()
         }
 
         var expectedEvents = [[String]]()

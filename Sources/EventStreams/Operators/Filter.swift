@@ -3,28 +3,60 @@
 //
 
 import Foundation
+import Observer
 
 extension EventStream {
 
-    public func filter(_ condition: @escaping (Payload) -> Bool) -> EventStream<Payload> {
+    public func filter(_ condition: @escaping (Value) -> Bool) -> EventStream<Value> {
 
-        filter { payload, date in
+        filter { value, date in
             
-            condition(payload)
+            condition(value)
         }
     }
 
-    public func filter(_ condition: @escaping (Payload, Date) -> Bool) -> EventStream<Payload> {
+    public func filter(_ condition: @escaping (Value, Date) -> Bool) -> EventStream<Value> {
 
-        let stream = EventStream<Payload>()
+        EventStream(
+            registerEvents: { publish, complete in
 
-        stream.subscriptions.insert(subscribeWithTime { event in
+                FilteredEventSource<Value>(
+                    source: self,
+                    condition: { event in condition(event.value, event.time) },
+                    publish: publish,
+                    complete: complete
+                )
+            },
+            unregister: { source in
 
-            if condition(event.payload, event.time) {
-                stream.publish(event)
             }
-        })
-
-        return stream
+        )
     }
+}
+
+class FilteredEventSource<Value>
+{
+    init(
+        source: EventStream<Value>,
+        condition: @escaping (Event<Value>) -> Bool,
+        publish: @escaping (Event<Value>) -> Void,
+        complete: @escaping () -> Void
+    ) {
+        
+        self.source = source
+        
+        self.sourceSubscription = source.subscribe(
+            onEvent: { event in
+                
+                if condition(event) {
+                    
+                    publish(event)
+                }
+            },
+            onComplete: complete
+        )
+    }
+    
+    let source: EventStream<Value>
+    let sourceSubscription: Subscription
 }

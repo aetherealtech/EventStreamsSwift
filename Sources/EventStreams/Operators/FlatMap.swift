@@ -9,15 +9,15 @@ import Foundation
 
 extension EventStream {
 
-    public func flatMap<Result>(_ transform: @escaping (Payload) -> EventStream<Result>) -> EventStream<Result> {
+    public func flatMap<Result>(_ transform: @escaping (Value) -> EventStream<Result>) -> EventStream<Result> {
 
-        flatMap { payload, date in
+        flatMap { value, date in
             
-            transform(payload)
+            transform(value)
         }
     }
     
-    public func flatMap<Result>(_ transform: @escaping (Payload, Date) -> EventStream<Result>) -> EventStream<Result> {
+    public func flatMap<Result>(_ transform: @escaping (Value, Date) -> EventStream<Result>) -> EventStream<Result> {
 
         self
             .map(transform)

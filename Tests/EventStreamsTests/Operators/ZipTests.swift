@@ -19,8 +19,8 @@ class ZipTests: XCTestCase {
         }
         
         let sourceStreams = sources.map { source in
-            
-            EventStream<String>(source: source)
+
+            source.asStream()
         }
 
         var expectedEvents = [Combined]()
@@ -65,7 +65,7 @@ class ZipTests: XCTestCase {
         
         let sourceStreams = sources.map { source in
             
-            EventStream<String>(source: source)
+            EventStream<String>(channel: source)
         }
 
         var expectedEvents = [[String]]()

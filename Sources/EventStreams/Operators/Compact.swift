@@ -7,7 +7,7 @@ import CoreExtensions
 
 extension EventStream {
 
-    public func compact() -> EventStream<Payload.Wrapped> where Payload: OptionalProtocol {
+    public func compact() -> EventStream<Value.Wrapped> where Value: OptionalProtocol {
         
         self
             .filter { value in value != nil }

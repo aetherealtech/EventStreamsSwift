@@ -19,7 +19,7 @@ class FilterTests: XCTestCase {
         
         let expectedEvents = testEvents.filter(filter)
         
-        let sourceStream = EventStream<String>(source: source)
+        let sourceStream = source.asStream()
         let filteredStream = sourceStream.filter(filter)
         
         var receivedEvents = [String]()

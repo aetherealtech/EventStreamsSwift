@@ -17,8 +17,8 @@ class MergeTests: XCTestCase {
         }
         
         let sourceStreams = sources.map { source in
-            
-            EventStream<Int>(source: source)
+
+            source.asStream()
         }
         
         let testEvents = sources.indices.map { index in

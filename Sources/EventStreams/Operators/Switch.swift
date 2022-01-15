@@ -5,25 +5,68 @@
 import Foundation
 import Observer
 
-extension EventStream where Payload : EventStreamProtocol {
+extension EventStream where Value : EventStreamProtocol {
 
-    public func `switch`() -> EventStream<Payload.Payload> {
+    public func `switch`() -> EventStream<Value.Value> {
 
-        let stream = EventStream<Payload.Payload>()
+        EventStream<Value.Value>(
+            registerEvents: { publish, complete in
 
-        var innerSubscription: Subscription?
+                SwitchEventSource<Value>(
+                    source: self,
+                    publish: publish,
+                    complete: complete
+                )
+            },
+            unregister: { source in
 
-        stream.subscriptions.insert(subscribe { innerStream in
-
-            if let subscription = innerSubscription {
-                stream.subscriptions.remove(subscription)
             }
-
-            let newSubscription = innerStream.subscribe(stream.publish)
-            stream.subscriptions.insert(newSubscription)
-            innerSubscription = newSubscription
-        })
-
-        return stream
+        )
     }
+}
+
+class SwitchEventSource<SourceStream: EventStreamProtocol>
+{
+    typealias Value = SourceStream.Value
+    
+    init(
+        source: EventStream<SourceStream>,
+        publish: @escaping (Event<Value>) -> Void,
+        complete: @escaping () -> Void
+    ) {
+        
+        self.source = source
+        self.complete = complete
+                
+        outerSubscription = source.subscribe(
+            onValue: { innerStream in
+                                                
+                self.innerSubscription = innerStream
+                    .subscribe(onEvent: publish, onComplete: {
+                        
+                        self.innerSubscription = nil
+                        self.checkComplete()
+                    })
+                
+            },
+            onComplete: {
+                
+                self.outerSubscription = nil
+                self.checkComplete()
+            }
+        )
+    }
+    
+    private func checkComplete() {
+        
+        if outerSubscription == nil && innerSubscription == nil {
+            complete()
+        }
+    }
+    
+    let source: EventStream<SourceStream>
+    let complete: () -> Void
+    
+    var outerSubscription: Subscription! = nil
+    var innerSubscription: Subscription! = nil
 }

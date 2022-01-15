@@ -12,7 +12,7 @@ class AccumulateTests: XCTestCase {
     func testAccumulate() throws {
         
         let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
-        let sourceStream = EventStream<Int>(source: source)
+        let sourceStream = source.asStream()
         
         let testEvents = Array(0..<15)
         let expectedEvents = testEvents.reduce(into: []) { partialResult, next in
@@ -20,7 +20,7 @@ class AccumulateTests: XCTestCase {
             partialResult.append((partialResult.last ?? 0) + next)
         }
 
-        let accumulatedStream = sourceStream.accumulate(initialValue: 0, publishInitial: true, +)
+        let accumulatedStream = sourceStream.accumulate(initialValue: 0, +)
         
         var receivedEvents = [Int]()
         

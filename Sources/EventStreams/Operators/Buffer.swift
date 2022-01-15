@@ -3,37 +3,71 @@
 //
 
 import Foundation
+import Observer
 
 extension EventStream {
 
-    public func buffer(count: Int, stride: Int) -> EventStream<[Payload]> {
+    public func buffer(count: Int, stride: Int) -> EventStream<[Value]> {
 
-        let stream = EventStream<[Payload]>()
+        EventStream<[Value]>(
+            registerValues: { publish, complete in
+
+                BufferSource(
+                    source: self,
+                    count: count,
+                    stride: stride,
+                    publish: publish,
+                    complete: complete
+                )
+            },
+            unregister: { source in
+
+            }
+        )
+    }
+}
+
+class BufferSource<Value>
+{
+    init(
+        source: EventStream<Value>,
+        count: Int,
+        stride: Int,
+        publish: @escaping ([Value]) -> Void,
+        complete: @escaping () -> Void
+    ) {
+
+        self.source = source
 
         let skip = max(stride - count, 0)
-        
-        var items: [Payload] = []
         var toSkip = 0
 
-        stream.subscriptions.insert(subscribe { event in
+        var values: [Value] = []
 
-            if toSkip > 0 {
-                toSkip -= 1
-                return
-            }
-            
-            items.append(event)
+        self.subscription = source.subscribe(
+            onValue: { value in
 
-            if items.count < count {
-                return
-            }
+                if toSkip > 0 {
+                    toSkip -= 1
+                    return
+                }
 
-            stream.publish(items)
+                values.append(value)
 
-            items.removeFirst(min(stride, items.count))
-            toSkip = skip
-        })
+                if values.count < count {
+                    return
+                }
 
-        return stream
+                publish(values)
+
+                values.removeFirst(min(stride, values.count))
+                toSkip = skip
+            },
+            onComplete: complete
+        )
     }
+
+    let source: EventStream<Value>
+
+    let subscription: Subscription
 }

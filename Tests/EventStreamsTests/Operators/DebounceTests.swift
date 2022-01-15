@@ -12,7 +12,7 @@ class DebounceTests: XCTestCase {
     func testDebounce() throws {
         
         let source: AnyTypedChannel<String> = SimpleChannel().asTypedChannel()
-        let sourceStream = EventStream<String>(source: source)
+        let sourceStream = source.asStream()
          
         var expectedEvents = [String]()
 

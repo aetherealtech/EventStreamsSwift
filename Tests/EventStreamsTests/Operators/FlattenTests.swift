@@ -22,12 +22,12 @@ class FlattenTests: XCTestCase {
         
         let innerStreams = innerSources.map { innerSource in
          
-            EventStream<String>(source: innerSource)
+            innerSource.asStream()
         }
 
         var expectedEvents = [String]()
         
-        let sourceStream = EventStream<EventStream<String>>(source: source)
+        let sourceStream = source.asStream()
         let flattenStream = sourceStream.flatten()
         
         var receivedEvents = [String]()

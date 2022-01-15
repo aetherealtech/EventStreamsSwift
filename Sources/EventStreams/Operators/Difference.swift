@@ -3,26 +3,58 @@
 //
 
 import Foundation
+import Observer
 
 extension EventStream {
 
     public func difference<Result>(
-        _ differentiator: @escaping (Payload, Payload) -> Result
+        _ differentiator: @escaping (Value, Value) -> Result
     ) -> EventStream<Result> {
 
-        let stream = EventStream<Result>()
+        EventStream<Result>(
+            registerValues: { publish, complete in
 
-        var lastOpt: Payload?
+                DifferenceSource(
+                    source: self,
+                    differentiator: differentiator,
+                    publish: publish,
+                    complete: complete
+                )
+            },
+            unregister: { source in
 
-        stream.subscriptions.insert(subscribe { payload in
-
-            if let last = lastOpt {
-                stream.publish(differentiator(payload, last))
             }
-            
-            lastOpt = payload
-        })
-
-        return stream
+        )
     }
+}
+
+class DifferenceSource<Value, Result>
+{
+    init(
+        source: EventStream<Value>,
+        differentiator: @escaping (Value, Value) -> Result,
+        publish: @escaping (Result) -> Void,
+        complete: @escaping () -> Void
+    ) {
+        
+        self.source = source
+        
+        var lastOpt: Value?
+
+        self.subscription = source.subscribe(
+            onValue: { value in
+                
+                if let last = lastOpt {
+                    publish(differentiator(value, last))
+                }
+                
+                lastOpt = value
+            },
+            onComplete: complete
+        )
+    }
+
+    let source: EventStream<Value>
+    
+    let subscription: Subscription
 }

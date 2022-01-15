@@ -12,7 +12,7 @@ class BufferTests: XCTestCase {
     func testBufferOverlap() throws {
         
         let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
-        let sourceStream = EventStream<Int>(source: source)
+        let sourceStream = source.asStream()
         
         let size = 10
         let stride = 7
@@ -44,7 +44,7 @@ class BufferTests: XCTestCase {
     func testBufferGaps() throws {
         
         let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
-        let sourceStream = EventStream<Int>(source: source)
+        let sourceStream = EventStream<Int>(channel: source)
         
         let size = 7
         let stride = 10

@@ -7,9 +7,9 @@ import XCTest
 import Observer
 @testable import EventStreams
 
-class FlatMapTests: XCTestCase {
+class SwitchMapTests: XCTestCase {
 
-    func testFlatMap() throws {
+    func testSwitchMap() throws {
         
         let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
         
@@ -22,7 +22,7 @@ class FlatMapTests: XCTestCase {
         
         let innerStreams = innerSources.map { innerSource in
          
-            EventStream<String>(source: innerSource)
+            innerSource.asStream()
         }
         
         let transform: (Int) -> EventStream<String> = { index in
@@ -32,12 +32,12 @@ class FlatMapTests: XCTestCase {
                 
         var expectedEvents = [String]()
         
-        let sourceStream = EventStream<Int>(source: source)
-        let flatMappedStream = sourceStream.flatMap(transform)
+        let sourceStream = source.asStream()
+        let switchMappedStream = sourceStream.switchMap(transform)
         
         var receivedEvents = [String]()
         
-        let subscription = flatMappedStream.subscribe { event in receivedEvents.append(event) }
+        let subscription = switchMappedStream.subscribe { event in receivedEvents.append(event) }
         
         for event in testEvents {
             
@@ -58,13 +58,15 @@ class FlatMapTests: XCTestCase {
             }
         }
         
-        for (index, innerSource) in innerSources.enumerated() {
+        var obsoleteSources = innerSources
+        obsoleteSources.removeLast()
+        
+        for (index, innerSource) in obsoleteSources.enumerated() {
             
             for innerIndex in 0..<10 {
                 
                 let additionalEvent = "Additional event \(innerIndex) from source \(index)"
                 innerSource.publish(additionalEvent)
-                expectedEvents.append((additionalEvent))
             }
         }
         

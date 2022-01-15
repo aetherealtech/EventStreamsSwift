@@ -7,48 +7,210 @@ import Observer
 
 public protocol EventStreamProtocol {
 
-    associatedtype Payload
+    associatedtype Value
 
-    func subscribe(_ handler: @escaping (Payload) -> Void) -> Subscription
+    func subscribe(
+        onEvent: @escaping (Event<Value>) -> Void,
+        onComplete: @escaping () -> Void
+    ) -> Subscription
 }
 
-final public class EventStream<Payload> : EventStreamProtocol {
+public struct Event<Value> {
+    
+    public init(
+        _ value: Value,
+        time: Date = Date()
+    ) {
+     
+        self.value = value
+        self.time = time
+    }
+    
+    public let value: Value
+    public let time: Date
+}
 
-    internal init() {
+extension Event: Equatable where Value: Equatable {
 
-        self.channel = SimpleChannel().asTypedChannel()
+}
+
+extension Event: Hashable where Value: Hashable {
+
+}
+
+public typealias EventSource<Value> = (
+    _ publish: @escaping (Event<Value>) -> Void,
+    _ complete: @escaping () -> Void
+) -> Any
+
+final public class EventStream<Value> : EventStreamProtocol {
+
+    public init<Registrant>(
+        registerEvents: (
+            _ publish: @escaping (Event<Value>) -> Void,
+            _ complete: @escaping () -> Void
+        ) -> Registrant,
+        unregister: @escaping (Registrant) -> Void
+    ) {
+
+        self.eventChannel = SimpleChannel().asTypedChannel()
+        self.completeChannel = SimpleChannel().asTypedChannel()
+
+        let registrant = registerEvents(
+            eventChannel.publish,
+            completeChannel.publish
+        )
+
+        self.unregister = { unregister(registrant) }
     }
 
-    public convenience init<Source: TypedChannel>(source: Source) where Source.Event == Payload {
+    public func subscribe(
+        onEvent: @escaping (Event<Value>) -> Void,
+        onComplete: @escaping () -> Void
+    ) -> Subscription {
 
-        self.init()
+        let eventSubscription = eventChannel.subscribe(onEvent)
+        let onCompleteSubscription = completeChannel.subscribe(onComplete)
+
+        let aggregateSubscription = AggregateSubscription([
+            eventSubscription,
+            onCompleteSubscription
+        ])
         
-        source.subscribe { [weak self] event in self?.publish(event) }
-            .store(in: &subscriptions)
-    }
-
-    public func subscribe(_ handler: @escaping (Payload) -> Void) -> Subscription {
-
-        subscribeWithTime { event in handler(event.payload) }
-    }
-
-    internal func subscribeWithTime(_ handler: @escaping (Event) -> Void) -> Subscription {
-
-        channel.subscribe(handler)
+        return RetainingSubscription(
+            stream: self,
+            subscription: aggregateSubscription
+        )
     }
     
-    internal func publish(_ payload: Payload) {
+    public func subscribe(
+        onEvent: @escaping (Event<Value>) -> Void
+    ) -> Subscription {
 
-        publish((payload: payload, time: Date()))
+        RetainingSubscription(
+            stream: self,
+            subscription: eventChannel.subscribe(onEvent)
+        )
     }
-
-    internal func publish(_ event: Event) {
-
-        channel.publish(event)
-    }
-
-    internal typealias Event = (payload: Payload, time: Date)
     
-    internal let channel: AnyTypedChannel<Event>
-    internal var subscriptions = Set<Subscription>()
+    public func subscribe(
+        onValue: @escaping (Value) -> Void,
+        onComplete: @escaping () -> Void
+    ) -> Subscription {
+
+        subscribe(
+            onEvent: { event in onValue(event.value) },
+            onComplete: onComplete
+        )
+    }
+    
+    public func subscribe(
+        onValue: @escaping (Value) -> Void
+    ) -> Subscription {
+
+        subscribe(onEvent: { event in onValue(event.value) })
+    }
+
+    private class RetainingSubscription: Subscription {
+        
+        public init(
+            stream: EventStream<Value>,
+            subscription: Subscription
+        ) {
+            
+            self.stream = stream
+            self.subscription = subscription
+        }
+        
+        let stream: EventStream<Value>
+        let subscription: Subscription
+    }
+    
+    let eventChannel: AnyTypedChannel<Event<Value>>
+    let completeChannel: AnyTypedChannel<Void>
+
+    private let unregister: () -> Void
+}
+
+extension EventStream {
+
+    public convenience init<Registrant>(
+        registerValues: (
+            _ publish: @escaping (Value) -> Void,
+            _ complete: @escaping () -> Void
+        ) -> Registrant,
+        unregister: @escaping (Registrant) -> Void
+    ) {
+
+        self.init(
+            registerEvents: { publish, complete in
+
+                registerValues({ value in publish(Event<Value>(value)) }, complete)
+            },
+            unregister: unregister
+        )
+    }
+}
+
+extension EventStream {
+
+    public convenience init<EventChannel: TypedSubChannel, CompleteChannel: TypedSubChannel>(
+        eventChannel: EventChannel,
+        completeChannel: CompleteChannel
+    ) where EventChannel.Value == Event<Value>, CompleteChannel.Value == Void {
+
+        self.init(
+            registerEvents: { publish, complete -> Subscription in
+
+                let valueSubscription = eventChannel.subscribe(publish)
+                let completeSubscription = completeChannel.subscribe(complete)
+
+                return AggregateSubscription([
+                    valueSubscription,
+                    completeSubscription]
+                )
+            },
+            unregister: { subscription in
+
+            }
+        )
+    }
+
+    public convenience init<ValueChannel: TypedSubChannel, CompleteChannel: TypedSubChannel>(
+        valueChannel: ValueChannel,
+        completeChannel: CompleteChannel
+    ) where ValueChannel.Value == Value, CompleteChannel.Value == Void {
+
+        self.init(
+            registerValues: { publish, complete -> Subscription in
+
+                let valueSubscription = valueChannel.subscribe(publish)
+                let completeSubscription = completeChannel.subscribe(complete)
+
+                return AggregateSubscription([
+                    valueSubscription,
+                    completeSubscription]
+                )
+            },
+            unregister: { subscription in
+
+            }
+        )
+    }
+}
+
+extension EventStream {
+
+    public convenience init(
+        source: (
+            _ publish: @escaping (Event<Value>) -> Void,
+            _ complete: @escaping () -> Void
+        ) -> Void
+    ) {
+
+        self.init(
+            registerEvents: source,
+            unregister: {  }
+        )
+    }
 }

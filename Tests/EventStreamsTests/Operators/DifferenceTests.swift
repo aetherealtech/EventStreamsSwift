@@ -12,7 +12,7 @@ class DifferenceTests: XCTestCase {
     func testDifference() throws {
         
         let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
-        let sourceStream = EventStream<Int>(source: source)
+        let sourceStream = source.asStream()
         
         let testEvents = (0..<15).map { value in (value * value) + 2 }
         

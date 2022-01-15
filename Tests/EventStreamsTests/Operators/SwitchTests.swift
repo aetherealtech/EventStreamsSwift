@@ -22,12 +22,12 @@ class SwitchTests: XCTestCase {
         
         let innerStreams = innerSources.map { innerSource in
          
-            EventStream<String>(source: innerSource)
+            innerSource.asStream()
         }
 
         var expectedEvents = [String]()
         
-        let sourceStream = EventStream<EventStream<String>>(source: source)
+        let sourceStream = source.asStream()
         let switchedStream = sourceStream.switch()
         
         var receivedEvents = [String]()

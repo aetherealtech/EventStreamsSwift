@@ -6,18 +6,79 @@
 //
 
 import Foundation
+import Observer
 
-extension EventStream where Payload : EventStreamProtocol {
+extension EventStream where Value : EventStreamProtocol {
 
-    public func flatten() -> EventStream<Payload.Payload> {
+    public func flatten() -> EventStream<Value.Value> {
 
-        let stream = EventStream<Payload.Payload>()
+        EventStream<Value.Value>(
+            registerEvents: { publish, complete in
 
-        stream.subscriptions.insert(subscribe { innerStream in
+                FlattenEventSource<Value>(
+                    source: self,
+                    publish: publish,
+                    complete: complete
+                )
+            },
+            unregister: { source in
 
-            stream.subscriptions.insert(innerStream.subscribe(stream.publish))
-        })
-
-        return stream
+            }
+        )
     }
+}
+
+class FlattenEventSource<SourceStream: EventStreamProtocol>
+{
+    typealias Value = SourceStream.Value
+    
+    init(
+        source: EventStream<SourceStream>,
+        publish: @escaping (Event<Value>) -> Void,
+        complete: @escaping () -> Void
+    ) {
+        
+        self.source = source
+        self.complete = complete
+        
+        var outerSubscription: Subscription!
+        
+        outerSubscription = source.subscribe(
+            onValue: { innerStream in
+                                
+                var subscription: Subscription!
+                
+                subscription = innerStream
+                    .subscribe(onEvent: publish, onComplete: {
+                        
+                        self.subscriptions.remove(subscription)
+                        self.checkComplete()
+                    })
+                
+                subscription
+                    .store(in: &self.subscriptions)
+                
+            },
+            onComplete: {
+                
+                self.subscriptions.remove(outerSubscription)
+                self.checkComplete()
+            }
+        )
+            
+        outerSubscription
+            .store(in: &subscriptions)
+    }
+    
+    private func checkComplete() {
+        
+        if subscriptions.isEmpty {
+            complete()
+        }
+    }
+    
+    let source: EventStream<SourceStream>
+    let complete: () -> Void
+    
+    var subscriptions = Set<Subscription>()
 }

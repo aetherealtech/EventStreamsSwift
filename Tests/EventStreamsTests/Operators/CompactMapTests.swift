@@ -7,24 +7,24 @@ import XCTest
 import Observer
 @testable import EventStreams
 
-class MapTests: XCTestCase {
+class CompactMapTests: XCTestCase {
 
-    func testMap() throws {
+    func testCompactMap() throws {
         
         let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
         
         let testEvents = Array(0..<10)
+         
+        let transform: (Int) -> String? = { value in value.isMultiple(of: 3) ? "\(value)" : nil }
+
+        let expectedEvents = testEvents.compactMap(transform)
         
-        let transform: (Int) -> String = { value in "\(value)" }
-        
-        let expectedEvents = testEvents.map(transform)
-        
-        let sourceStream = EventStream<Int>(source: source)
-        let mappedStream = sourceStream.map(transform)
+        let sourceStream = source.asStream()
+        let compactedStream = sourceStream.compactMap(transform)
         
         var receivedEvents = [String]()
         
-        let subscription = mappedStream.subscribe { event in receivedEvents.append(event) }
+        let subscription = compactedStream.subscribe { event in receivedEvents.append(event) }
         
         for event in testEvents {
             source.publish(event)

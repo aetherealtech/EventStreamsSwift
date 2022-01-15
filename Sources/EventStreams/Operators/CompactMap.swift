@@ -6,15 +6,15 @@ import Foundation
 
 extension EventStream {
 
-    public func compactMap<Result>(_ transform: @escaping (Payload) -> Result?) -> EventStream<Result> {
+    public func compactMap<Result>(_ transform: @escaping (Value) -> Result?) -> EventStream<Result> {
 
-        compactMap { payload, date in
+        compactMap { value, date in
             
-            transform(payload)
+            transform(value)
         }
     }
     
-    public func compactMap<Result>(_ transform: @escaping (Payload, Date) -> Result?) -> EventStream<Result> {
+    public func compactMap<Result>(_ transform: @escaping (Value, Date) -> Result?) -> EventStream<Result> {
 
         self
             .map(transform)

@@ -3,28 +3,58 @@
 //
 
 import Foundation
+import Observer
 
 extension EventStream {
 
     public func accumulate<Result>(
         initialValue: Result,
-        publishInitial: Bool = false,
-        _ accumulator: @escaping (Result, Payload) -> Result
+        _ accumulator: @escaping (Result, Value) -> Result
     ) -> EventStream<Result> {
 
-        let stream = EventStream<Result>()
+        EventStream<Result>(
+            registerValues: { publish, complete in
 
-        var last = initialValue
-        if publishInitial {
-            stream.publish(last)
-        }
+                AccumulateSource(
+                    source: self,
+                    initialValue: initialValue,
+                    accumulator: accumulator,
+                    publish: publish,
+                    complete: complete
+                )
+            },
+            unregister: { source in
 
-        stream.subscriptions.insert(subscribe { event in
-
-            last = accumulator(last, event)
-            stream.publish(last)
-        })
-
-        return stream
+            }
+        )
     }
+}
+
+class AccumulateSource<Value, Result>
+{
+    init(
+        source: EventStream<Value>,
+        initialValue: Result,
+        accumulator: @escaping (Result, Value) -> Result,
+        publish: @escaping (Result) -> Void,
+        complete: @escaping () -> Void
+    ) {
+        
+        self.source = source
+        
+        var last = initialValue
+
+        self.subscription = source.subscribe(
+            onValue: { event in
+
+                last = accumulator(last, event)
+                publish(last)
+            },
+            onComplete: complete
+        )
+    }
+
+    let source: EventStream<Value>
+    
+    let subscription: Subscription
 }

@@ -28,7 +28,7 @@ class CompactTests: XCTestCase {
                 
         let expectedEvents = testEvents.compact()
         
-        let sourceStream = EventStream<Int?>(source: source)
+        let sourceStream = source.asStream()
         let compactedStream = sourceStream.compact()
         
         var receivedEvents = [Int]()

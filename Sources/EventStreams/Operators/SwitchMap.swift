@@ -9,7 +9,7 @@ import Foundation
 
 extension EventStream {
 
-    public func switchMap<Result>(_ transform: @escaping (Payload) -> EventStream<Result>) -> EventStream<Result> {
+    public func switchMap<Result>(_ transform: @escaping (Value) -> EventStream<Result>) -> EventStream<Result> {
 
         self
             .map(transform)
