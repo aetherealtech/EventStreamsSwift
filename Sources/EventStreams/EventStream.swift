@@ -38,11 +38,6 @@ extension Event: Hashable where Value: Hashable {
 
 }
 
-public typealias EventSource<Value> = (
-    _ publish: @escaping (Event<Value>) -> Void,
-    _ complete: @escaping () -> Void
-) -> Any
-
 final public class EventStream<Value> : EventStreamProtocol {
 
     public init<Registrant>(
