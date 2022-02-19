@@ -65,5 +65,7 @@ class FlattenTests: XCTestCase {
         }
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

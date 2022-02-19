@@ -37,5 +37,7 @@ class JustTests: XCTestCase {
         scheduler.process()
         
         XCTAssertEqual(receivedEvent, testEvent)
+
+        withExtendedLifetime(subscription) { }
     }
 }

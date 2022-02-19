@@ -12,8 +12,6 @@ class SequenceTests: XCTestCase {
 
     func testSequence() throws {
 
-        let testValue = Int.random(in: 0..<100)
-
         let startTime = Date()
         let interval = TimeInterval.random(in: 10.0..<100.0)
 
@@ -49,5 +47,7 @@ class SequenceTests: XCTestCase {
 
             XCTAssertEqual(invocation.time, testEvent.time)
         }
+
+        withExtendedLifetime(subscription) { }
     }
 }

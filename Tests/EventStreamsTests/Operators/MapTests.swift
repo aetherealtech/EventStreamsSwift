@@ -31,5 +31,7 @@ class MapTests: XCTestCase {
         }
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

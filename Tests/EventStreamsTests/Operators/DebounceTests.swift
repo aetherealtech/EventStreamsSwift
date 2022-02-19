@@ -37,5 +37,7 @@ class DebounceTests: XCTestCase {
         }
 
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

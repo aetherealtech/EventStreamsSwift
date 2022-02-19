@@ -40,5 +40,7 @@ class CompactTests: XCTestCase {
         }
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

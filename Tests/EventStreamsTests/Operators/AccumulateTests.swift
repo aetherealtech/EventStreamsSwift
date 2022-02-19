@@ -31,5 +31,7 @@ class AccumulateTests: XCTestCase {
         }
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

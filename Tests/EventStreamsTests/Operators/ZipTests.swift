@@ -54,6 +54,8 @@ class ZipTests: XCTestCase {
             first.3 == second.3 &&
             first.4 == second.4
         }))
+
+        withExtendedLifetime(subscription) { }
     }
     
     func testZipArray() throws {
@@ -97,5 +99,7 @@ class ZipTests: XCTestCase {
         expectedEvents.append(nextEvent)
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

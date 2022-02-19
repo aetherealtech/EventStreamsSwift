@@ -6,7 +6,7 @@
         "repositoryURL": "https://github.com/aetherealtech/SwiftCoreExtensions.git",
         "state": {
           "branch": "master",
-          "revision": "b588a40070fecc2ce3b89b8c29686aa33acec1d8",
+          "revision": "6b14847986d56e6de30b8e90233c46e52d0180da",
           "version": null
         }
       },
@@ -15,7 +15,7 @@
         "repositoryURL": "https://github.com/aetherealtech/SwiftObserver.git",
         "state": {
           "branch": "master",
-          "revision": "13a60c1d74a6b010130437d9f9595da9349d5eeb",
+          "revision": "596f431f0561e7ea59b81c17ae1bf11c1d56084e",
           "version": null
         }
       },
@@ -24,7 +24,7 @@
         "repositoryURL": "https://github.com/aetherealtech/SwiftScheduling.git",
         "state": {
           "branch": "master",
-          "revision": "1f37c71404ff321a5d873c55fe6e6c8c0460df1c",
+          "revision": "fda79bde1bb177c625e8d54d8fbc086382532bf8",
           "version": null
         }
       }

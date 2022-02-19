@@ -71,5 +71,7 @@ class SwitchMapTests: XCTestCase {
         }
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

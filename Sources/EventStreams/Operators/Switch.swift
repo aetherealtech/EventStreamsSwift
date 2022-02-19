@@ -5,14 +5,14 @@
 import Foundation
 import Observer
 
-extension EventStream where Value : EventStreamProtocol {
+extension EventStream {
 
-    public func `switch`() -> EventStream<Value.Value> {
+    public func `switch`<InnerValue>() -> EventStream<InnerValue> where Value == EventStream<InnerValue> {
 
-        EventStream<Value.Value>(
+        EventStream<InnerValue>(
             registerEvents: { publish, complete in
 
-                SwitchEventSource<Value>(
+                SwitchEventSource<InnerValue>(
                     source: self,
                     publish: publish,
                     complete: complete
@@ -25,12 +25,10 @@ extension EventStream where Value : EventStreamProtocol {
     }
 }
 
-class SwitchEventSource<SourceStream: EventStreamProtocol>
+class SwitchEventSource<Value>
 {
-    typealias Value = SourceStream.Value
-    
     init(
-        source: EventStream<SourceStream>,
+        source: EventStream<EventStream<Value>>,
         publish: @escaping (Event<Value>) -> Void,
         complete: @escaping () -> Void
     ) {
@@ -64,7 +62,7 @@ class SwitchEventSource<SourceStream: EventStreamProtocol>
         }
     }
     
-    let source: EventStream<SourceStream>
+    let source: EventStream<EventStream<Value>>
     let complete: () -> Void
     
     var outerSubscription: Subscription! = nil

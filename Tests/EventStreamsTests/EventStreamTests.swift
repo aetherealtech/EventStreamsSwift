@@ -29,6 +29,9 @@ class EventStreamTests: XCTestCase {
 
         XCTAssertEqual(receivedValue1, testValue)
         XCTAssertEqual(receivedValue2, testValue)
+
+        withExtendedLifetime(subscription1) { }
+        withExtendedLifetime(subscription2) { }
     }
 
     func testUnsubscribe() throws {
@@ -53,6 +56,9 @@ class EventStreamTests: XCTestCase {
 
         XCTAssertEqual(receivedValue1, testValue)
         XCTAssertNil(receivedValue2)
+
+        withExtendedLifetime(subscription1) { }
+        withExtendedLifetime(subscription2) { }
     }
 
     func testRetain() throws {
@@ -74,5 +80,7 @@ class EventStreamTests: XCTestCase {
         source.publish(testValue)
 
         XCTAssertEqual(receivedValue, testValue)
+
+        withExtendedLifetime(subscription) { }
     }
 }

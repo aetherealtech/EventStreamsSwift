@@ -62,6 +62,8 @@ class CombineLatestTests: XCTestCase {
             first.3 == second.3 &&
             first.4 == second.4
         }))
+
+        withExtendedLifetime(subscription) { }
     }
     
     func testCombineLatestArray() throws {
@@ -105,5 +107,7 @@ class CombineLatestTests: XCTestCase {
         }
 
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }

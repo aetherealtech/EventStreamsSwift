@@ -5,16 +5,6 @@
 import Foundation
 import Observer
 
-public protocol EventStreamProtocol {
-
-    associatedtype Value
-
-    func subscribe(
-        onEvent: @escaping (Event<Value>) -> Void,
-        onComplete: @escaping () -> Void
-    ) -> Subscription
-}
-
 public struct Event<Value> {
     
     public init(
@@ -38,7 +28,7 @@ extension Event: Hashable where Value: Hashable {
 
 }
 
-final public class EventStream<Value> : EventStreamProtocol {
+final public class EventStream<Value> {
 
     public init<Registrant>(
         registerEvents: (
@@ -57,6 +47,11 @@ final public class EventStream<Value> : EventStreamProtocol {
         )
 
         self.unregister = { unregister(registrant) }
+    }
+
+    deinit {
+
+        unregister()
     }
 
     public func subscribe(

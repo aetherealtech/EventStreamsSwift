@@ -8,14 +8,14 @@
 import Foundation
 import Observer
 
-extension Collection where Element : EventStreamProtocol {
+extension Collection {
 
-    public func merge() -> EventStream<Element.Value> {
+    public func merge<Value>() -> EventStream<Value> where Element == EventStream<Value> {
 
-        EventStream<Element.Value>(
+        EventStream<Value>(
             registerEvents:  { publish, complete in
 
-                MergeEventSource<Self>(
+                MergeEventSource<Value, Self>(
                     sources: self,
                     publish: publish,
                     complete: complete
@@ -36,10 +36,8 @@ extension EventStream {
     }
 }
 
-class MergeEventSource<SourceCollection: Collection> where SourceCollection.Element : EventStreamProtocol
+class MergeEventSource<Value, SourceCollection: Collection> where SourceCollection.Element == EventStream<Value>
 {
-    typealias Value = SourceCollection.Element.Value
-    
     init(
         sources: SourceCollection,
         publish: @escaping (Event<Value>) -> Void,

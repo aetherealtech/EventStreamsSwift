@@ -64,11 +64,11 @@ extension EventStream {
     }
 }
 
-extension Array where Element: EventStreamProtocol {
+extension Array {
 
-    public func combineLatest() -> EventStream<[Element.Value]> {
+    public func combineLatest<Value>() -> EventStream<[Value]> where Element == EventStream<Value> {
 
-        EventStream<[Element.Value]>(
+        EventStream<[Value]>(
             registerValues: { publish, complete in
 
                 ArrayCombineLatestSource(
@@ -162,12 +162,10 @@ class CombineLatestSource<Value1, Value2>
     var subscriptions = Set<Subscription>()
 }
 
-class ArrayCombineLatestSource<Source: EventStreamProtocol>
+class ArrayCombineLatestSource<Value>
 {
-    typealias Value = Source.Value
-    
     init(
-        sources: [Source],
+        sources: [EventStream<Value>],
         publish: @escaping ([Value]) -> Void,
         complete: @escaping () -> Void
     ) {
@@ -222,7 +220,7 @@ class ArrayCombineLatestSource<Source: EventStreamProtocol>
         }
     }
     
-    let sources: [Source]
+    let sources: [EventStream<Value>]
     let complete: () -> Void
     
     var values: [Value?]

@@ -8,14 +8,14 @@
 import Foundation
 import Observer
 
-extension EventStream where Value : EventStreamProtocol {
+extension EventStream {
 
-    public func flatten() -> EventStream<Value.Value> {
+    public func flatten<InnerValue>() -> EventStream<InnerValue> where Value == EventStream<InnerValue> {
 
-        EventStream<Value.Value>(
+        EventStream<InnerValue>(
             registerEvents: { publish, complete in
 
-                FlattenEventSource<Value>(
+                FlattenEventSource<InnerValue>(
                     source: self,
                     publish: publish,
                     complete: complete
@@ -28,12 +28,10 @@ extension EventStream where Value : EventStreamProtocol {
     }
 }
 
-class FlattenEventSource<SourceStream: EventStreamProtocol>
+class FlattenEventSource<Value>
 {
-    typealias Value = SourceStream.Value
-    
     init(
-        source: EventStream<SourceStream>,
+        source: EventStream<EventStream<Value>>,
         publish: @escaping (Event<Value>) -> Void,
         complete: @escaping () -> Void
     ) {
@@ -77,7 +75,7 @@ class FlattenEventSource<SourceStream: EventStreamProtocol>
         }
     }
     
-    let source: EventStream<SourceStream>
+    let source: EventStream<EventStream<Value>>
     let complete: () -> Void
     
     var subscriptions = Set<Subscription>()

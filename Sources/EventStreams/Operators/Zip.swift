@@ -64,11 +64,11 @@ extension EventStream {
     }
 }
 
-extension Array where Element: EventStreamProtocol {
+extension Array {
 
-    public func zip() -> EventStream<[Element.Value]> {
+    public func zip<Value>() -> EventStream<[Value]> where Element == EventStream<Value> {
 
-        EventStream<[Element.Value]>(
+        EventStream<[Value]>(
             registerValues: { publish, complete in
 
                 ArrayZipSource(
@@ -166,12 +166,10 @@ class ZipSource<Value1, Value2>
     var subscriptions = Set<Subscription>()
 }
 
-class ArrayZipSource<Source: EventStreamProtocol>
+class ArrayZipSource<Value>
 {
-    typealias Value = Source.Value
-    
     init(
-        sources: [Source],
+        sources: [EventStream<Value>],
         publish: @escaping ([Value]) -> Void,
         complete: @escaping () -> Void
     ) {
@@ -221,7 +219,7 @@ class ArrayZipSource<Source: EventStreamProtocol>
         }
     }
     
-    let sources: [Source]
+    let sources: [EventStream<Value>]
     let complete: () -> Void
     
     var subscriptions = Set<Subscription>()

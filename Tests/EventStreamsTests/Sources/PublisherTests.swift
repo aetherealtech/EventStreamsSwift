@@ -79,6 +79,8 @@ class PublisherTests: XCTestCase {
         publisher.publishAll()
 
         XCTAssertEqual(receivedValues, testValues)
+
+        withExtendedLifetime(subscription) { }
     }
 
     func testPublisherToEventStreamWithErrors() throws {
@@ -105,6 +107,8 @@ class PublisherTests: XCTestCase {
         publisher.publishAll()
 
         XCTAssertEqual(receivedValues, testValues)
+
+        withExtendedLifetime(subscription) { }
     }
 
     func testEventStreamToEventPublisher() throws {
@@ -138,6 +142,8 @@ class PublisherTests: XCTestCase {
         for receivedEvent in receivedEvents {
             XCTAssertTrue(validDateRange.contains(receivedEvent.time))
         }
+
+        withExtendedLifetime(subscription) { }
     }
 
     func testEventStreamToValuePublisher() throws {
@@ -162,5 +168,7 @@ class PublisherTests: XCTestCase {
         }
 
         XCTAssertEqual(receivedValues, testValues)
+
+        withExtendedLifetime(subscription) { }
     }
 }

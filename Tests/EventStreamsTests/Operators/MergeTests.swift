@@ -34,7 +34,7 @@ class MergeTests: XCTestCase {
         
         let subscription = mergedStream.subscribe { event in receivedEvents.append(event) }
         
-        for index in 0..<testEvents.flatMap { events in events }.count {
+        for index in 0..<testEvents.flatMap({ events in events }).count {
             
             let outerIndex = index % testEvents.count
             let innerIndex = index / testEvents.count
@@ -47,5 +47,7 @@ class MergeTests: XCTestCase {
         }
         
         XCTAssertEqual(receivedEvents, expectedEvents)
+
+        withExtendedLifetime(subscription) { }
     }
 }
