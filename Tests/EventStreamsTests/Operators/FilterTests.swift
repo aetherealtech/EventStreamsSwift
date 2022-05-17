@@ -11,7 +11,7 @@ class FilterTests: XCTestCase {
     
     func testFilter() throws {
         
-        let source: AnyTypedChannel<String> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<String>()
         
         let testEvents = (0..<10).map { index in "\(index)" }
         

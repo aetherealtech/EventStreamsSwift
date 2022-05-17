@@ -38,8 +38,8 @@ final public class EventStream<Value> {
         unregister: @escaping (Registrant) -> Void
     ) {
 
-        self.eventChannel = SimpleChannel().asTypedChannel()
-        self.completeChannel = SimpleChannel().asTypedChannel()
+        self.eventChannel = SimpleChannel()
+        self.completeChannel = SimpleChannel()
 
         let registrant = registerEvents(
             eventChannel.publish,
@@ -116,8 +116,8 @@ final public class EventStream<Value> {
         let subscription: Subscription
     }
     
-    let eventChannel: AnyTypedChannel<Event<Value>>
-    let completeChannel: AnyTypedChannel<Void>
+    let eventChannel: SimpleChannel<Event<Value>>
+    let completeChannel: SimpleChannel<Void>
 
     private let unregister: () -> Void
 }
@@ -144,7 +144,7 @@ extension EventStream {
 
 extension EventStream {
 
-    public convenience init<EventChannel: TypedSubChannel, CompleteChannel: TypedSubChannel>(
+    public convenience init<EventChannel: SubChannel, CompleteChannel: SubChannel>(
         eventChannel: EventChannel,
         completeChannel: CompleteChannel
     ) where EventChannel.Value == Event<Value>, CompleteChannel.Value == Void {
@@ -166,7 +166,7 @@ extension EventStream {
         )
     }
 
-    public convenience init<ValueChannel: TypedSubChannel, CompleteChannel: TypedSubChannel>(
+    public convenience init<ValueChannel: SubChannel, CompleteChannel: SubChannel>(
         valueChannel: ValueChannel,
         completeChannel: CompleteChannel
     ) where ValueChannel.Value == Value, CompleteChannel.Value == Void {

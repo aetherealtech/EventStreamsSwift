@@ -6,7 +6,7 @@
         "repositoryURL": "https://github.com/aetherealtech/SwiftCoreExtensions.git",
         "state": {
           "branch": "master",
-          "revision": "6b14847986d56e6de30b8e90233c46e52d0180da",
+          "revision": "7ea3340f736446c625fec5090f6180e4987f8ba8",
           "version": null
         }
       },
@@ -15,7 +15,7 @@
         "repositoryURL": "https://github.com/aetherealtech/SwiftObserver.git",
         "state": {
           "branch": "master",
-          "revision": "596f431f0561e7ea59b81c17ae1bf11c1d56084e",
+          "revision": "85b54b064c9fc2d70e37a981181690317b573b1c",
           "version": null
         }
       },

@@ -17,13 +17,13 @@ class FlatMapAsyncTests: XCTestCase {
 
     func testFlatMapAsync() async throws {
 
-        let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int>()
 
         let testEvents = Set<Int>(0..<10)
 
-        let innerSources: [AnyTypedChannel<String>] = testEvents.map { _ in
+        let innerSources: [SimpleChannel<String>] = testEvents.map { _ in
 
-            SimpleChannel().asTypedChannel()
+            SimpleChannel<String>()
         }
 
         let innerStreams = innerSources.map { innerSource in

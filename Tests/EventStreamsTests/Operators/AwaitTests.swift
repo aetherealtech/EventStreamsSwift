@@ -17,7 +17,7 @@ class AwaitTests: XCTestCase {
 
     func testAwait() async throws {
         
-        let source: AnyTypedChannel<Task<Int, Never>> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Task<Int, Never>>()
         
         let testEvents = Set<Int>(0..<10)
 

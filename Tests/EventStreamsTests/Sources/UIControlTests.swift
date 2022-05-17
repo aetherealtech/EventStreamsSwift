@@ -39,6 +39,8 @@ class UIControlTests: XCTestCase {
             
             expecetedTimeRange.contains(eventTime)
         }))
+        
+        withExtendedLifetime(subscription) { _ in }
     }
 }
 

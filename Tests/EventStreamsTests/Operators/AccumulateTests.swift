@@ -11,7 +11,7 @@ class AccumulateTests: XCTestCase {
 
     func testAccumulate() throws {
         
-        let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int>()
         let sourceStream = source.asStream()
         
         let testEvents = Array(0..<15)

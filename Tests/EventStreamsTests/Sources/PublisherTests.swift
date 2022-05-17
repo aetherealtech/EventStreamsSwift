@@ -115,7 +115,7 @@ class PublisherTests: XCTestCase {
 
         let testValues = (0..<10).map { _ in Int.random(in: 0..<1000) }
 
-        let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int>()
         let stream = source.asStream()
 
         let publisher: AnyPublisher<Event<Int>, Never> = stream
@@ -150,7 +150,7 @@ class PublisherTests: XCTestCase {
 
         let testValues = (0..<10).map { _ in Int.random(in: 0..<1000) }
 
-        let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int>()
         let stream = source.asStream()
 
         let publisher: AnyPublisher<Int, Never> = stream

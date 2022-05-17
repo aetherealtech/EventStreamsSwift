@@ -11,8 +11,7 @@ class EventStreamTests: XCTestCase {
 
     func testPublish() throws {
 
-        let source: AnyTypedChannel<String> = SimpleChannel()
-            .asTypedChannel()
+        let source = SimpleChannel<String>()
 
         let stream = source
             .asStream()
@@ -36,8 +35,7 @@ class EventStreamTests: XCTestCase {
 
     func testUnsubscribe() throws {
 
-        let source: AnyTypedChannel<String> = SimpleChannel()
-            .asTypedChannel()
+        let source = SimpleChannel<String>()
 
         let stream = source
             .asStream()
@@ -63,8 +61,7 @@ class EventStreamTests: XCTestCase {
 
     func testRetain() throws {
 
-        let source: AnyTypedChannel<String> = SimpleChannel()
-            .asTypedChannel()
+        let source = SimpleChannel<String>()
 
         var stream: EventStream<String>? = source
             .asStream()

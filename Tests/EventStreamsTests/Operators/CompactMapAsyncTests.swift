@@ -17,7 +17,7 @@ class CompactMapAsyncTests: XCTestCase {
 
     func testCompactMapAsync() async throws {
         
-        let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int>()
         
         let testEvents = Set<Int>(0..<10)
 

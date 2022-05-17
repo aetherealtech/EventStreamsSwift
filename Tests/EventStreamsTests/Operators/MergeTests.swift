@@ -11,9 +11,9 @@ class MergeTests: XCTestCase {
 
     func testMerge() throws {
         
-        let sources: [AnyTypedChannel<Int>] = (0..<5).map { _ in
+        let sources: [SimpleChannel<Int>] = (0..<5).map { _ in
             
-            SimpleChannel().asTypedChannel()
+            SimpleChannel<Int>()
         }
         
         let sourceStreams = sources.map { source in

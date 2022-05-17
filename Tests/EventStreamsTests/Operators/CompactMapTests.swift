@@ -11,7 +11,7 @@ class CompactMapTests: XCTestCase {
 
     func testCompactMap() throws {
         
-        let source: AnyTypedChannel<Int> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int>()
         
         let testEvents = Array(0..<10)
          

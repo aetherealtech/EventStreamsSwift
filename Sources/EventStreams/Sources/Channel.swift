@@ -6,7 +6,7 @@ import Foundation
 import Observer
 import Scheduling
 
-extension TypedSubChannel {
+extension SubChannel {
 
     public func asStream() -> EventStream<Value> {
 
@@ -16,7 +16,7 @@ extension TypedSubChannel {
 
 extension EventStream {
     
-    public convenience init<Channel: TypedSubChannel>(
+    public convenience init<Channel: SubChannel>(
         channel: Channel
     ) where Channel.Value == Value {
 

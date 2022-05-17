@@ -11,13 +11,13 @@ class SwitchTests: XCTestCase {
  
     func testSwitch() throws {
         
-        let source: AnyTypedChannel<EventStream<String>> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<EventStream<String>>()
         
         let testEvents = Array(0..<10)
         
-        let innerSources: [AnyTypedChannel<String>] = testEvents.map { _ in
+        let innerSources: [SimpleChannel<String>] = testEvents.map { _ in
          
-            SimpleChannel().asTypedChannel()
+            SimpleChannel<String>()
         }
         
         let innerStreams = innerSources.map { innerSource in

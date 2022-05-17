@@ -13,9 +13,9 @@ class CombineLatestTests: XCTestCase {
         
         typealias Combined = (String, String, String, String, String)
         
-        let sources: [AnyTypedChannel<String>] = (0..<5).map { _ in
+        let sources: [SimpleChannel<String>] = (0..<5).map { _ in
             
-            SimpleChannel().asTypedChannel()
+            SimpleChannel<String>()
         }
         
         let sourceStreams = sources.map { source in
@@ -68,9 +68,9 @@ class CombineLatestTests: XCTestCase {
     
     func testCombineLatestArray() throws {
                 
-        let sources: [AnyTypedChannel<String>] = (0..<10).map { _ in
+        let sources: [SimpleChannel<String>] = (0..<10).map { _ in
             
-            SimpleChannel().asTypedChannel()
+            SimpleChannel<String>()
         }
         
         let sourceStreams = sources.map { source in

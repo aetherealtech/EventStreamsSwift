@@ -11,7 +11,7 @@ class CompactTests: XCTestCase {
 
     func testCompact() throws {
         
-        let source: AnyTypedChannel<Int?> = SimpleChannel().asTypedChannel()
+        let source = SimpleChannel<Int?>()
         
         let testEvents = [
             0,
