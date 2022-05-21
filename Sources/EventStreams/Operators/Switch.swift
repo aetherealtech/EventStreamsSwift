@@ -26,39 +26,22 @@ class SwitchEventStream<Value> : EventStream<Value>
         self.source = source
 
         super.init(
-            eventChannel: eventChannel,
-            completeChannel: completeChannelInternal
+            channel: eventChannel
         )
 
         outerSubscription = source.subscribe(
             onValue: { innerStream in
 
                 self.innerSubscription = innerStream
-                        .subscribe(onEvent: eventChannel.publish, onComplete: {
+                        .subscribe(
+                            onEvent: eventChannel.publish
+                        )
 
-                            self.innerSubscription = nil
-                            self.checkComplete()
-                        })
-
-            },
-            onComplete: {
-
-                self.outerSubscription = nil
-                self.checkComplete()
             }
         )
     }
 
-    private func checkComplete() {
-
-        if outerSubscription == nil && innerSubscription == nil {
-            completeChannelInternal.publish()
-        }
-    }
-
     private let source: EventStream<EventStream<Value>>
-
-    private let completeChannelInternal = SimpleChannel<Void>()
 
     private var outerSubscription: Subscription! = nil
     private var innerSubscription: Subscription! = nil

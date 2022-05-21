@@ -37,19 +37,13 @@ class PublisherEventStream<Source: Publisher> : EventStream<Source.Output> where
         self.source = source
 
         let eventChannel = SimpleChannel<Event<Value>>()
-        let completeChannel = SimpleChannel<Void>()
 
         subscription = source.sink(
-            receiveCompletion: { result in
-
-                completeChannel.publish()
-            },
-            receiveValue: { value in eventChannel.publish(Event(value)) }
+            receiveValue: { value in eventChannel.publish(value) }
         )
 
         super.init(
-            eventChannel: eventChannel,
-            completeChannel: completeChannel
+            channel: eventChannel
         )
     }
 
@@ -70,23 +64,19 @@ class TryPublisherEventStream<Source: Publisher> : EventStream<Result<Source.Out
         self.source = source
 
         let eventChannel = SimpleChannel<Event<Value>>()
-        let completeChannel = SimpleChannel<Void>()
 
         subscription = source.sink(
             receiveCompletion: { result in
 
                 if case .failure(let error) = result {
-                    eventChannel.publish(Event(.failure(error)))
+                    eventChannel.publish(.failure(error))
                 }
-
-                completeChannel.publish()
             },
-            receiveValue: { value in eventChannel.publish(Event(.success(value))) }
+            receiveValue: { value in eventChannel.publish(.success(value)) }
         )
 
         super.init(
-            eventChannel: eventChannel,
-            completeChannel: completeChannel
+            channel: eventChannel
         )
     }
 

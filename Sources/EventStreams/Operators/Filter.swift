@@ -35,17 +35,16 @@ class FilteredEventStream<Value> : EventStream<Value>
 
         self.source = source
 
-        self.sourceSubscription = source.eventChannel
-                .subscribe { event in
+        self.sourceSubscription = source
+                .subscribe(onEvent: { event in
 
                     if condition(event) {
                         channel.publish(event)
                     }
-                }
+                })
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 

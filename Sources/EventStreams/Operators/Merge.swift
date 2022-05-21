@@ -37,8 +37,7 @@ class MergeEventStream<Value, SourceCollection: Collection> : EventStream<Value>
         self.sources = sources
 
         super.init(
-            eventChannel: channel,
-            completeChannel: completeChannelInternal
+            channel: channel
         )
 
         for source in sources {
@@ -46,12 +45,7 @@ class MergeEventStream<Value, SourceCollection: Collection> : EventStream<Value>
             var subscription: Subscription!
 
             subscription = source.subscribe(
-                onEvent: channel.publish,
-                onComplete: {
-
-                    self.subscriptions.remove(subscription)
-                    self.checkComplete()
-                }
+                onEvent: channel.publish
             )
 
             subscription
@@ -60,14 +54,6 @@ class MergeEventStream<Value, SourceCollection: Collection> : EventStream<Value>
     }
 
     private let sources: SourceCollection
-    private let completeChannelInternal = SimpleChannel<Void>()
 
     private var subscriptions = Set<Subscription>()
-
-    private func checkComplete() {
-
-        if subscriptions.isEmpty {
-            completeChannelInternal.publish()
-        }
-    }
 }

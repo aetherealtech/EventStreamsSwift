@@ -80,13 +80,14 @@ class UIControlEventStream : EventStream<UIEvent> {
         self.event = event
 
         let eventChannel = SimpleChannel<Event<UIEvent>>()
-        let completeChannel = SimpleChannel<Void>()
 
-        subscription = source.addTarget(event: event, handler: { event in eventChannel.publish(Event(event)) })
+        subscription = source.addTarget(
+            event: event,
+            handler: { event in eventChannel.publish(event) }
+        )
 
         super.init(
-            eventChannel: eventChannel,
-            completeChannel: completeChannel
+            channel: eventChannel
         )
     }
 

@@ -84,13 +84,12 @@ class CombineLatestEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
         let send: () -> Void = {
 
             if let v1 = value1, let v2 = value2 {
-                channel.publish(Event((v1, v2)))
+                channel.publish((v1, v2))
             }
         }
 
         super.init(
-            eventChannel: channel,
-            completeChannel: completeChannelInternal
+            channel: channel
         )
 
         var subscription1: Subscription!
@@ -100,11 +99,6 @@ class CombineLatestEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
                 
                 value1 = v1
                 send()
-            },
-            onComplete: {
-                
-                self.subscriptions.remove(subscription1)
-                self.checkComplete()
             }
         )
             
@@ -118,29 +112,15 @@ class CombineLatestEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
                 
                 value2 = v2
                 send()
-            },
-            onComplete: {
-                
-                self.subscriptions.remove(subscription2)
-                self.checkComplete()
             }
         )
         
         subscription2
             .store(in: &subscriptions)
     }
-    
-    private func checkComplete() {
-        
-        if subscriptions.isEmpty {
-            completeChannelInternal.publish()
-        }
-    }
 
     private let source1: EventStream<Value1>
     private let source2: EventStream<Value2>
-
-    private let completeChannelInternal = SimpleChannel<Void>()
 
     private var subscriptions = Set<Subscription>()
 }
@@ -156,13 +136,9 @@ class ArrayCombineLatestEventStream<Value> : EventStream<[Value]>
         self.values = sources.map { _ in nil }
 
         let channel = SimpleChannel<Event<[Value]>>()
-        let completeChannelInternal = SimpleChannel<Void>()
-
-        self.completeChannelInternal = completeChannelInternal
 
         super.init(
-            eventChannel: channel,
-            completeChannel: completeChannelInternal
+            channel: channel
         )
 
         let send: () -> Void = {
@@ -170,7 +146,7 @@ class ArrayCombineLatestEventStream<Value> : EventStream<[Value]>
             let readyValues = self.values.compact()
             guard readyValues.count == self.values.count else { return }
 
-            channel.publish(Event(readyValues))
+            channel.publish(readyValues)
         }
 
         sources.enumerated().forEach { index, sourceStream in
@@ -182,20 +158,6 @@ class ArrayCombineLatestEventStream<Value> : EventStream<[Value]>
                     
                     self.values[index] = event.value
                     send()
-                },
-                onComplete: {
-                    
-                    // If this stream never published a value, the combine latest stream will never publish one either
-                    guard self.values[index] != nil else {
-                        
-                        self.subscriptions.removeAll()
-
-                        completeChannelInternal.publish()
-                        return
-                    }
-                    
-                    self.subscriptions.remove(subscription)
-                    self.checkComplete()
                 }
             )
             
@@ -203,16 +165,8 @@ class ArrayCombineLatestEventStream<Value> : EventStream<[Value]>
                 .store(in: &subscriptions)
         }
     }
-    
-    private func checkComplete() {
-        
-        if subscriptions.isEmpty {
-            completeChannelInternal.publish()
-        }
-    }
 
     private let sources: [EventStream<Value>]
-    private let completeChannelInternal: SimpleChannel<Void>
 
     private var values: [Value?]
 

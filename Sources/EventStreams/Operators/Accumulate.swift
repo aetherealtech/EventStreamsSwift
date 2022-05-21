@@ -30,22 +30,23 @@ class AccumulateEventStream<Value, Result> : EventStream<Result>
 
         let channel = SimpleChannel<Event<Result>>()
         self.source = source
-        
+
         var last = initialValue
 
-        subscription = source.eventChannel.subscribe { event in
+        subscription = source.subscribe(
+            onValue: { value in
 
-            last = accumulator(last, event.value)
-            channel.publish(Event<Result>(last))
-        }
+                last = accumulator(last, value)
+                channel.publish(last)
+            }
+        )
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 
     let source: EventStream<Value>
-    
+
     let subscription: Subscription
 }

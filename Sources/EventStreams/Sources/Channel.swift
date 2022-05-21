@@ -24,11 +24,10 @@ class ChannelEventStream<Value> : EventStream<Value> {
 
         let channel = SimpleChannel<Event<Value>>()
 
-        sourceSubscription = source.subscribe { value in channel.publish(Event(value)) }
+        sourceSubscription = source.subscribe { value in channel.publish(value) }
 
         super.init(
-            eventChannel: channel,
-            completeChannel: SimpleChannel()
+            channel: channel
         )
     }
 

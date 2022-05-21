@@ -25,13 +25,11 @@ class FlattenEventStream<Value> : EventStream<Value>
     ) {
 
         let eventChannel = SimpleChannel<Event<Value>>()
-        completeChannelInternal = SimpleChannel<Void>()
 
         self.source = source
 
         super.init(
-            eventChannel: eventChannel,
-            completeChannel: completeChannelInternal
+            channel: eventChannel
         )
 
         var outerSubscription: Subscription!
@@ -42,20 +40,13 @@ class FlattenEventStream<Value> : EventStream<Value>
                 var subscription: Subscription!
 
                 subscription = innerStream
-                        .subscribe(onEvent: eventChannel.publish, onComplete: {
-
-                            self.subscriptions.remove(subscription)
-                            self.checkComplete()
-                        })
+                        .subscribe(
+                            onEvent: eventChannel.publish
+                        )
 
                 subscription
                         .store(in: &self.subscriptions)
 
-            },
-            onComplete: {
-
-                self.subscriptions.remove(outerSubscription)
-                self.checkComplete()
             }
         )
 
@@ -63,15 +54,7 @@ class FlattenEventStream<Value> : EventStream<Value>
                 .store(in: &subscriptions)
     }
 
-    private func checkComplete() {
-
-        if subscriptions.isEmpty {
-            completeChannelInternal.publish()
-        }
-    }
-
     private let source: EventStream<EventStream<Value>>
 
-    private let completeChannelInternal: SimpleChannel<Void>
     private var subscriptions = Set<Subscription>()
 }

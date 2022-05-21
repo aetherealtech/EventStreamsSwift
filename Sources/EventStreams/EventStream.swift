@@ -28,49 +28,30 @@ extension Event: Hashable where Value: Hashable {
 
 }
 
+extension PubChannel {
+
+    func publish<UnderlyingValue>(_ value: UnderlyingValue) where Value == Event<UnderlyingValue> {
+
+        publish(Event(value))
+    }
+}
+
 public class EventStream<Value> {
 
-    public init<EventChannel: SubChannel, CompleteChannel: SubChannel>(
-        eventChannel: EventChannel,
-        completeChannel: CompleteChannel
-    ) where EventChannel.Value == Event<Value>, CompleteChannel.Value == Void {
+    public init<EventChannel: SubChannel>(
+        channel: EventChannel
+    ) where EventChannel.Value == Event<Value> {
 
-        self.eventChannel = eventChannel.erase()
-        self.completeChannel = completeChannel.erase()
+        self.eventChannel = channel.erase()
     }
 
-    public final func subscribe(
-        onEvent: @escaping (Event<Value>) -> Void,
-        onComplete: @escaping () -> Void
-    ) -> Subscription {
-
-        let eventSubscription = eventChannel.subscribe(onEvent)
-        let onCompleteSubscription = completeChannel.subscribe(onComplete)
-
-        return AggregateSubscription([
-            eventSubscription,
-            onCompleteSubscription
-        ])
-    }
-    
     public final func subscribe(
         onEvent: @escaping (Event<Value>) -> Void
     ) -> Subscription {
 
         eventChannel.subscribe(onEvent)
     }
-    
-    public final func subscribe(
-        onValue: @escaping (Value) -> Void,
-        onComplete: @escaping () -> Void
-    ) -> Subscription {
 
-        subscribe(
-            onEvent: { event in onValue(event.value) },
-            onComplete: onComplete
-        )
-    }
-    
     public final func subscribe(
         onValue: @escaping (Value) -> Void
     ) -> Subscription {
@@ -78,6 +59,5 @@ public class EventStream<Value> {
         subscribe(onEvent: { event in onValue(event.value) })
     }
 
-    public let eventChannel: AnySubChannel<Event<Value>>
-    public let completeChannel: AnySubChannel<Void>
+    private let eventChannel: AnySubChannel<Event<Value>>
 }

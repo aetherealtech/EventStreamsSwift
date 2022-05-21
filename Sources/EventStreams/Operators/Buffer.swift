@@ -34,30 +34,31 @@ class BufferEventStream<Value> : EventStream<[Value]>
 
         let channel = SimpleChannel<Event<[Value]>>()
 
-        self.subscription = source.eventChannel.subscribe { event in
+        self.subscription = source.subscribe(
+            onEvent: { event in
 
-            let value = event.value
+                let value = event.value
 
-            if toSkip > 0 {
-                toSkip -= 1
-                return
+                if toSkip > 0 {
+                    toSkip -= 1
+                    return
+                }
+
+                values.append(value)
+
+                if values.count < count {
+                    return
+                }
+
+                channel.publish(values)
+
+                values.removeFirst(min(stride, values.count))
+                toSkip = skip
             }
-
-            values.append(value)
-
-            if values.count < count {
-                return
-            }
-
-            channel.publish(Event(values))
-
-            values.removeFirst(min(stride, values.count))
-            toSkip = skip
-        }
+        )
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 

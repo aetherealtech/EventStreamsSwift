@@ -51,15 +51,14 @@ class MappedEventStream<SourceValue, ResultValue> : EventStream<ResultValue>
 
         self.source = source
 
-        self.sourceSubscription = source.eventChannel
+        self.sourceSubscription = source
                 .subscribe { event in
 
                     channel.publish(transform(event))
                 }
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 

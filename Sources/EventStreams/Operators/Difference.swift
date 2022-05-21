@@ -31,20 +31,19 @@ class DifferenceEventStream<Value, Result> : EventStream<Result>
 
         let channel = SimpleChannel<Event<Result>>()
 
-        self.subscription = source.eventChannel.subscribe { event in
+        self.subscription = source.subscribe(
+            onValue: { value in
 
-            let value = event.value
+                if let last = lastOpt {
+                    channel.publish(differentiator(value, last))
+                }
 
-            if let last = lastOpt {
-                channel.publish(Event(differentiator(value, last)))
+                lastOpt = value
             }
-
-            lastOpt = value
-        }
+        )
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 

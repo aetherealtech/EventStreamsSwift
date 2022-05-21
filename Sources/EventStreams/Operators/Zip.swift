@@ -85,14 +85,16 @@ class ZipEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
 
             if let v1 = value1, let v2 = value2 {
 
-                channel.publish(Event((v1, v2)))
+                channel.publish((v1, v2))
                 
                 value1 = nil
                 value2 = nil
             }
         }
 
-        super.init(eventChannel: channel, completeChannel: completeChannelInternal)
+        super.init(
+            channel: channel
+        )
 
         var subscription1: Subscription!
         
@@ -101,11 +103,6 @@ class ZipEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
                 
                 value1 = v1
                 send()
-            },
-            onComplete: {
-                
-                self.subscriptions.remove(subscription1)
-                self.checkComplete()
             }
         )
             
@@ -119,29 +116,15 @@ class ZipEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
                 
                 value2 = v2
                 send()
-            },
-            onComplete: {
-                
-                self.subscriptions.remove(subscription2)
-                self.checkComplete()
             }
         )
         
         subscription2
             .store(in: &subscriptions)
     }
-    
-    private func checkComplete() {
-        
-        if subscriptions.isEmpty {
-            completeChannelInternal.publish()
-        }
-    }
-    
+
     private let source1: EventStream<Value1>
     private let source2: EventStream<Value2>
-
-    private let completeChannelInternal = SimpleChannel<Void>()
 
     private var subscriptions = Set<Subscription>()
 }
@@ -159,8 +142,7 @@ class ArrayZipEventStream<Value> : EventStream<[Value]>
         var values: [Value?] = sources.map { _ in nil }
 
         super.init(
-            eventChannel: channel,
-            completeChannel: completeChannelInternal
+            channel: channel
         )
 
         let send: () -> Void = {
@@ -168,7 +150,7 @@ class ArrayZipEventStream<Value> : EventStream<[Value]>
             let readyValues = values.compactMap { value in value }
             guard readyValues.count == values.count else { return }
 
-            channel.publish(Event(readyValues))
+            channel.publish(readyValues)
             
             values = sources.map { _ in nil }
         }
@@ -182,11 +164,6 @@ class ArrayZipEventStream<Value> : EventStream<[Value]>
                     
                     values[index] = event.value
                     send()
-                },
-                onComplete: {
-                    
-                    self.subscriptions.remove(subscription)
-                    self.checkComplete()
                 }
             )
             
@@ -194,16 +171,8 @@ class ArrayZipEventStream<Value> : EventStream<[Value]>
                 .store(in: &subscriptions)
         }
     }
-    
-    private func checkComplete() {
-        
-        if subscriptions.isEmpty {
-            completeChannelInternal.publish()
-        }
-    }
 
     private let sources: [EventStream<Value>]
-    private let completeChannelInternal = SimpleChannel<Void>()
 
     private var subscriptions = Set<Subscription>()
 }

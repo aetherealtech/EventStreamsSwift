@@ -47,7 +47,7 @@ class AwaitEventStream<Value> : EventStream<Value>
 
         self.source = source
 
-        self.sourceSubscription = source.eventChannel.subscribe { event in
+        self.sourceSubscription = source.subscribe { event in
 
             Task {
 
@@ -56,8 +56,7 @@ class AwaitEventStream<Value> : EventStream<Value>
         }
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 
@@ -77,29 +76,30 @@ class TryAwaitEventStream<Success> : EventStream<Result<Success, Error>>
 
         self.source = source
 
-        self.sourceSubscription = source.eventChannel.subscribe { event in
+        self.sourceSubscription = source.subscribe(
+            onEvent: { event in
 
-            Task {
+                Task {
 
-                let result: Event<Result<Success, Error>>
+                    let result: Event<Result<Success, Error>>
 
-                do {
+                    do {
 
-                    let resultEvent = try await event.value.value
-                    result = Event(.success(resultEvent.value), time: resultEvent.time)
+                        let resultEvent = try await event.value.value
+                        result = Event(.success(resultEvent.value), time: resultEvent.time)
+                    }
+                    catch(let error) {
+
+                        result = Event(.failure(error))
+                    }
+
+                    channel.publish(result)
                 }
-                catch(let error) {
-
-                    result = Event(.failure(error))
-                }
-
-                channel.publish(result)
             }
-        }
+        )
 
         super.init(
-            eventChannel: channel,
-            completeChannel: source.completeChannel
+            channel: channel
         )
     }
 

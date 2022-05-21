@@ -61,21 +61,19 @@ class SequenceEventStream<Value, ValueAndTime, Values: Sequence> : EventStream<V
     ) {
 
         let eventsChannel = SimpleChannel<Event<Value>>()
-        let completeChannel = SimpleChannel<Void>()
 
         self.timer = scheduler.runTimer(
             values: values,
             getFireTime: getTime,
             onFire: { valueAndTime in
 
-                eventsChannel.publish(Event<Value>(getValue(valueAndTime), time: getTime(valueAndTime)))
+                eventsChannel.publish(Event(getValue(valueAndTime), time: getTime(valueAndTime)))
             },
-            onComplete: completeChannel.publish
+            onComplete: { }
         )
 
         super.init(
-            eventChannel: eventsChannel,
-            completeChannel: completeChannel
+            channel: eventsChannel
         )
     }
 

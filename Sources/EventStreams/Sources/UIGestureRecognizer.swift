@@ -75,16 +75,14 @@ class UIGestureRecognizerEventStream<Recognizer: UIGestureRecognizer> : EventStr
         self.source = source
 
         let eventChannel = SimpleChannel<Event<Recognizer>>()
-        let completeChannel = SimpleChannel<Void>()
 
         subscription = UIGestureRecognizer.addTarget(
             recognizer: source,
-            handler: { event in eventChannel.publish(Event(event)) }
+            handler: { event in eventChannel.publish(event) }
         )
 
         super.init(
-            eventChannel: eventChannel,
-            completeChannel: completeChannel
+            channel: eventChannel
         )
     }
 
