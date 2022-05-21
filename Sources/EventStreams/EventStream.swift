@@ -30,7 +30,7 @@ extension Event: Hashable where Value: Hashable {
 
 extension PubChannel {
 
-    func publish<UnderlyingValue>(_ value: UnderlyingValue) where Value == Event<UnderlyingValue> {
+    public func publish<UnderlyingValue>(_ value: UnderlyingValue) where Value == Event<UnderlyingValue> {
 
         publish(Event(value))
     }
