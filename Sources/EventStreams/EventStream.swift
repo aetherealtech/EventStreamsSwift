@@ -36,7 +36,7 @@ extension PubChannel {
     }
 }
 
-public class EventStream<Value> {
+open class EventStream<Value> {
 
     public init<EventChannel: SubChannel>(
         channel: EventChannel
