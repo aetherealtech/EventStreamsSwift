@@ -1,4 +1,4 @@
- //
+//
 //  Created by Daniel Coleman on 1/9/22.
 //
 
@@ -9,62 +9,57 @@ extension EventStream {
 
     public func `switch`<InnerValue>() -> EventStream<InnerValue> where Value == EventStream<InnerValue> {
 
-        EventStream<InnerValue>(
-            registerEvents: { publish, complete in
-
-                SwitchEventSource<InnerValue>(
-                    source: self,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        SwitchEventStream(
+            source: self
         )
     }
 }
 
-class SwitchEventSource<Value>
+class SwitchEventStream<Value> : EventStream<Value>
 {
     init(
-        source: EventStream<EventStream<Value>>,
-        publish: @escaping (Event<Value>) -> Void,
-        complete: @escaping () -> Void
+        source: EventStream<EventStream<Value>>
     ) {
-        
+
+        let eventChannel = SimpleChannel<Event<Value>>()
+
         self.source = source
-        self.complete = complete
-                
+
+        super.init(
+            eventChannel: eventChannel,
+            completeChannel: completeChannelInternal
+        )
+
         outerSubscription = source.subscribe(
             onValue: { innerStream in
-                                                
+
                 self.innerSubscription = innerStream
-                    .subscribe(onEvent: publish, onComplete: {
-                        
-                        self.innerSubscription = nil
-                        self.checkComplete()
-                    })
-                
+                        .subscribe(onEvent: eventChannel.publish, onComplete: {
+
+                            self.innerSubscription = nil
+                            self.checkComplete()
+                        })
+
             },
             onComplete: {
-                
+
                 self.outerSubscription = nil
                 self.checkComplete()
             }
         )
     }
-    
+
     private func checkComplete() {
-        
+
         if outerSubscription == nil && innerSubscription == nil {
-            complete()
+            completeChannelInternal.publish()
         }
     }
-    
-    let source: EventStream<EventStream<Value>>
-    let complete: () -> Void
-    
-    var outerSubscription: Subscription! = nil
-    var innerSubscription: Subscription! = nil
+
+    private let source: EventStream<EventStream<Value>>
+
+    private let completeChannelInternal = SimpleChannel<Void>()
+
+    private var outerSubscription: Subscription! = nil
+    private var innerSubscription: Subscription! = nil
 }

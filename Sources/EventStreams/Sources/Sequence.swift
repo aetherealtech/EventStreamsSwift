@@ -16,21 +16,11 @@ extension EventStream {
         on scheduler: Scheduler = DispatchQueue.global()
     ) -> EventStream<Value> where Values.Element == ValueAndTime {
 
-        EventStream<Value>(
-            registerEvents: { publish, complete in
-
-                SequenceEventSource(
-                    values: values,
-                    getValue: getValue,
-                    getTime: getTime,
-                    scheduler: scheduler,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        SequenceEventStream(
+            values: values,
+            getValue: getValue,
+            getTime: getTime,
+            scheduler: scheduler
         )
     }
 
@@ -61,27 +51,33 @@ extension EventStream {
     }
 }
 
-class SequenceEventSource<Value, ValueAndTime, Values: Sequence> where Values.Element == ValueAndTime
+class SequenceEventStream<Value, ValueAndTime, Values: Sequence> : EventStream<Value> where Values.Element == ValueAndTime
 {
     init(
         values: Values,
         getValue: @escaping (ValueAndTime) -> Value,
         getTime: @escaping (ValueAndTime) -> Date,
-        scheduler: Scheduler,
-        publish: @escaping (Event<Value>) -> Void,
-        complete: @escaping () -> Void
+        scheduler: Scheduler
     ) {
+
+        let eventsChannel = SimpleChannel<Event<Value>>()
+        let completeChannel = SimpleChannel<Void>()
 
         self.timer = scheduler.runTimer(
             values: values,
             getFireTime: getTime,
             onFire: { valueAndTime in
 
-                publish(Event<Value>(getValue(valueAndTime), time: getTime(valueAndTime)))
+                eventsChannel.publish(Event<Value>(getValue(valueAndTime), time: getTime(valueAndTime)))
             },
-            onComplete: complete
+            onComplete: completeChannel.publish
+        )
+
+        super.init(
+            eventChannel: eventsChannel,
+            completeChannel: completeChannel
         )
     }
 
-    let timer: Scheduling.Timer
+    private let timer: Scheduling.Timer
 }

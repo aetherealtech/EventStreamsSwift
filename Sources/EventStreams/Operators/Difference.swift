@@ -11,50 +11,44 @@ extension EventStream {
         _ differentiator: @escaping (Value, Value) -> Result
     ) -> EventStream<Result> {
 
-        EventStream<Result>(
-            registerValues: { publish, complete in
-
-                DifferenceSource(
-                    source: self,
-                    differentiator: differentiator,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        DifferenceEventStream(
+            source: self,
+            differentiator: differentiator
         )
     }
 }
 
-class DifferenceSource<Value, Result>
+class DifferenceEventStream<Value, Result> : EventStream<Result>
 {
     init(
         source: EventStream<Value>,
-        differentiator: @escaping (Value, Value) -> Result,
-        publish: @escaping (Result) -> Void,
-        complete: @escaping () -> Void
+        differentiator: @escaping (Value, Value) -> Result
     ) {
-        
+
         self.source = source
-        
+
         var lastOpt: Value?
 
-        self.subscription = source.subscribe(
-            onValue: { value in
-                
-                if let last = lastOpt {
-                    publish(differentiator(value, last))
-                }
-                
-                lastOpt = value
-            },
-            onComplete: complete
+        let channel = SimpleChannel<Event<Result>>()
+
+        self.subscription = source.eventChannel.subscribe { event in
+
+            let value = event.value
+
+            if let last = lastOpt {
+                channel.publish(Event(differentiator(value, last)))
+            }
+
+            lastOpt = value
+        }
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: source.completeChannel
         )
     }
 
-    let source: EventStream<Value>
-    
-    let subscription: Subscription
+    private let source: EventStream<Value>
+
+    private let subscription: Subscription
 }

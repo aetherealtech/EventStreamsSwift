@@ -10,38 +10,90 @@ import Scheduling
 
 extension UIControl {
 
-    private class TargetBridge : NSObject
-    {
-        init(
-            publish: @escaping (UIEvent) -> Void
-        ) {
-            
-            self.publish = publish
+    private class ControlSubscription : Subscription {
+
+        private class TargetBridge : NSObject
+        {
+            init(
+                handler: @escaping (UIEvent) -> Void
+            ) {
+
+                self.handler = handler
+            }
+
+            @objc func receive(sender: UIControl, event: UIEvent) {
+
+                handler(event)
+            }
+
+            private let handler: (UIEvent) -> Void
         }
 
-        @objc func receive(sender: UIControl, event: UIEvent) {
-            
-            publish(event)
+        init(
+            source: UIControl,
+            event: UIControl.Event,
+            handler: @escaping (UIEvent) -> Void
+        ) {
+            self.source = source
+            self.event = event
+            self.bridge = TargetBridge(handler: handler)
+
+            source.addTarget(bridge, action: #selector(TargetBridge.receive), for: event)
         }
-        
-        private let publish: (UIEvent) -> Void
+
+        deinit {
+
+            source.removeTarget(bridge, action: #selector(TargetBridge.receive), for: event)
+        }
+
+        private let source: UIControl
+        private let event: UIControl.Event
+        private let bridge: TargetBridge
+    }
+
+    func addTarget(event: Event, handler: @escaping (UIEvent) -> Void) -> Subscription {
+
+        ControlSubscription(
+            source: self,
+            event: event,
+            handler: handler
+        )
     }
 
     func eventStream(for event: Event) -> EventStream<UIEvent> {
 
-        EventStream(
-            registerValues: { publish, complete -> TargetBridge in
-
-                let bridge = TargetBridge(publish: publish)
-                self.addTarget(bridge, action: #selector(TargetBridge.receive), for: event)
-                return bridge
-            },
-            unregister: { bridge in
-
-                self.removeTarget(bridge, action: #selector(TargetBridge.receive), for: event)
-            }
+        UIControlEventStream(
+            source: self,
+            event: event
         )
     }
+}
+
+class UIControlEventStream : EventStream<UIEvent> {
+
+    init(
+        source: UIControl,
+        event: UIControl.Event
+    ) {
+
+        self.source = source
+        self.event = event
+
+        let eventChannel = SimpleChannel<Event<UIEvent>>()
+        let completeChannel = SimpleChannel<Void>()
+
+        subscription = source.addTarget(event: event, handler: { event in eventChannel.publish(Event(event)) })
+
+        super.init(
+            eventChannel: eventChannel,
+            completeChannel: completeChannel
+        )
+    }
+
+    private let source: UIControl
+    private let event: UIControl.Event
+
+    private let subscription: Subscription
 }
 
 #endif

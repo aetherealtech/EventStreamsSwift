@@ -11,19 +11,9 @@ extension EventStream {
         _ other: EventStream<Other>
     ) -> EventStream<(Value, Other)> {
 
-        EventStream<(Value, Other)>(
-            registerValues:  { publish, complete in
-
-                ZipSource(
-                    source1: self,
-                    source2: other,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        ZipEventStream(
+            source1: self,
+            source2: other
         )
     }
 
@@ -68,51 +58,41 @@ extension Array {
 
     public func zip<Value>() -> EventStream<[Value]> where Element == EventStream<Value> {
 
-        EventStream<[Value]>(
-            registerValues: { publish, complete in
-
-                ArrayZipSource(
-                    sources: self,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        ArrayZipEventStream(
+            sources: self
         )
     }
 }
 
-class ZipSource<Value1, Value2>
+class ZipEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
 {
     typealias Value = (Value1, Value2)
     
     init(
         source1: EventStream<Value1>,
-        source2: EventStream<Value2>,
-        publish: @escaping (Value) -> Void,
-        complete: @escaping () -> Void
+        source2: EventStream<Value2>
     ) {
         
         self.source1 = source1
         self.source2 = source2
-        
-        self.complete = complete
-        
+
         var value1: Value1?
         var value2: Value2?
+
+        let channel = SimpleChannel<Event<Value>>()
 
         let send: () -> Void = {
 
             if let v1 = value1, let v2 = value2 {
-                
-                publish((v1, v2))
+
+                channel.publish(Event((v1, v2)))
                 
                 value1 = nil
                 value2 = nil
             }
         }
+
+        super.init(eventChannel: channel, completeChannel: completeChannelInternal)
 
         var subscription1: Subscription!
         
@@ -154,38 +134,41 @@ class ZipSource<Value1, Value2>
     private func checkComplete() {
         
         if subscriptions.isEmpty {
-            complete()
+            completeChannelInternal.publish()
         }
     }
     
-    let source1: EventStream<Value1>
-    let source2: EventStream<Value2>
-    
-    let complete: () -> Void
-    
-    var subscriptions = Set<Subscription>()
+    private let source1: EventStream<Value1>
+    private let source2: EventStream<Value2>
+
+    private let completeChannelInternal = SimpleChannel<Void>()
+
+    private var subscriptions = Set<Subscription>()
 }
 
-class ArrayZipSource<Value>
+class ArrayZipEventStream<Value> : EventStream<[Value]>
 {
     init(
-        sources: [EventStream<Value>],
-        publish: @escaping ([Value]) -> Void,
-        complete: @escaping () -> Void
+        sources: [EventStream<Value>]
     ) {
         
         self.sources = sources
-        
-        self.complete = complete
-        
+
+        let channel = SimpleChannel<Event<[Value]>>()
+
         var values: [Value?] = sources.map { _ in nil }
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: completeChannelInternal
+        )
 
         let send: () -> Void = {
 
             let readyValues = values.compactMap { value in value }
             guard readyValues.count == values.count else { return }
-            
-            publish(readyValues)
+
+            channel.publish(Event(readyValues))
             
             values = sources.map { _ in nil }
         }
@@ -215,12 +198,12 @@ class ArrayZipSource<Value>
     private func checkComplete() {
         
         if subscriptions.isEmpty {
-            complete()
+            completeChannelInternal.publish()
         }
     }
-    
-    let sources: [EventStream<Value>]
-    let complete: () -> Void
-    
-    var subscriptions = Set<Subscription>()
+
+    private let sources: [EventStream<Value>]
+    private let completeChannelInternal = SimpleChannel<Void>()
+
+    private var subscriptions = Set<Subscription>()
 }

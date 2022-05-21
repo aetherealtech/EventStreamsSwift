@@ -9,32 +9,20 @@ extension EventStream {
 
     public func buffer(count: Int, stride: Int) -> EventStream<[Value]> {
 
-        EventStream<[Value]>(
-            registerValues: { publish, complete in
-
-                BufferSource(
-                    source: self,
-                    count: count,
-                    stride: stride,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        BufferEventStream(
+            source: self,
+            count: count,
+            stride: stride
         )
     }
 }
 
-class BufferSource<Value>
+class BufferEventStream<Value> : EventStream<[Value]>
 {
     init(
         source: EventStream<Value>,
         count: Int,
-        stride: Int,
-        publish: @escaping ([Value]) -> Void,
-        complete: @escaping () -> Void
+        stride: Int
     ) {
 
         self.source = source
@@ -44,30 +32,36 @@ class BufferSource<Value>
 
         var values: [Value] = []
 
-        self.subscription = source.subscribe(
-            onValue: { value in
+        let channel = SimpleChannel<Event<[Value]>>()
 
-                if toSkip > 0 {
-                    toSkip -= 1
-                    return
-                }
+        self.subscription = source.eventChannel.subscribe { event in
 
-                values.append(value)
+            let value = event.value
 
-                if values.count < count {
-                    return
-                }
+            if toSkip > 0 {
+                toSkip -= 1
+                return
+            }
 
-                publish(values)
+            values.append(value)
 
-                values.removeFirst(min(stride, values.count))
-                toSkip = skip
-            },
-            onComplete: complete
+            if values.count < count {
+                return
+            }
+
+            channel.publish(Event(values))
+
+            values.removeFirst(min(stride, values.count))
+            toSkip = skip
+        }
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: source.completeChannel
         )
     }
 
-    let source: EventStream<Value>
+    private let source: EventStream<Value>
 
-    let subscription: Subscription
+    private let subscription: Subscription
 }

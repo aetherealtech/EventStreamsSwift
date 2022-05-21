@@ -11,44 +11,88 @@ extension Publisher {
 
     func toEventStream() -> EventStream<Result<Output, Failure>> {
 
-        EventStream(
-            registerValues: { publish, complete -> AnyCancellable in
-
-                sink(
-                    receiveCompletion: { result in
-                        
-                        if case .failure(let error) = result {
-                            publish(.failure(error))
-                        }
-                        
-                        complete()
-                    },
-                    receiveValue: { value in publish(.success(value)) }
-                )
-            },
-            unregister: { cancellable in
-
-                
-            }
-        )
+        TryPublisherEventStream(source: self)
     }
 }
+
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 extension Publisher where Failure == Never {
 
     func toEventStream() -> EventStream<Output> {
 
-        let eventStream: EventStream<Result<Output, Failure>> = toEventStream()
-
-        return eventStream
-            .map { result -> Output in
-
-                guard case .success(let value) = result else { fatalError() }
-
-                return value
-            }
+        PublisherEventStream(source: self)
     }
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+class PublisherEventStream<Source: Publisher> : EventStream<Source.Output> where Source.Failure == Never {
+
+    typealias Value = Source.Output
+
+    init(
+        source: Source
+    ) {
+
+        self.source = source
+
+        let eventChannel = SimpleChannel<Event<Value>>()
+        let completeChannel = SimpleChannel<Void>()
+
+        subscription = source.sink(
+            receiveCompletion: { result in
+
+                completeChannel.publish()
+            },
+            receiveValue: { value in eventChannel.publish(Event(value)) }
+        )
+
+        super.init(
+            eventChannel: eventChannel,
+            completeChannel: completeChannel
+        )
+    }
+
+    private let source: Source
+
+    private let subscription: AnyCancellable
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+class TryPublisherEventStream<Source: Publisher> : EventStream<Result<Source.Output, Source.Failure>> {
+
+    typealias Value = Result<Source.Output, Source.Failure>
+
+    init(
+        source: Source
+    ) {
+
+        self.source = source
+
+        let eventChannel = SimpleChannel<Event<Value>>()
+        let completeChannel = SimpleChannel<Void>()
+
+        subscription = source.sink(
+            receiveCompletion: { result in
+
+                if case .failure(let error) = result {
+                    eventChannel.publish(Event(.failure(error)))
+                }
+
+                completeChannel.publish()
+            },
+            receiveValue: { value in eventChannel.publish(Event(.success(value))) }
+        )
+
+        super.init(
+            eventChannel: eventChannel,
+            completeChannel: completeChannel
+        )
+    }
+
+    private let source: Source
+
+    private let subscription: AnyCancellable
 }
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)

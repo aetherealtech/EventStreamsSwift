@@ -12,45 +12,36 @@ extension EventStream {
         _ accumulator: @escaping (Result, Value) -> Result
     ) -> EventStream<Result> {
 
-        EventStream<Result>(
-            registerValues: { publish, complete in
-
-                AccumulateSource(
-                    source: self,
-                    initialValue: initialValue,
-                    accumulator: accumulator,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        AccumulateEventStream(
+            source: self,
+            initialValue: initialValue,
+            accumulator: accumulator
         )
     }
 }
 
-class AccumulateSource<Value, Result>
+class AccumulateEventStream<Value, Result> : EventStream<Result>
 {
     init(
         source: EventStream<Value>,
         initialValue: Result,
-        accumulator: @escaping (Result, Value) -> Result,
-        publish: @escaping (Result) -> Void,
-        complete: @escaping () -> Void
+        accumulator: @escaping (Result, Value) -> Result
     ) {
-        
+
+        let channel = SimpleChannel<Event<Result>>()
         self.source = source
         
         var last = initialValue
 
-        self.subscription = source.subscribe(
-            onValue: { event in
+        subscription = source.eventChannel.subscribe { event in
 
-                last = accumulator(last, event)
-                publish(last)
-            },
-            onComplete: complete
+            last = accumulator(last, event.value)
+            channel.publish(Event<Result>(last))
+        }
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: source.completeChannel
         )
     }
 

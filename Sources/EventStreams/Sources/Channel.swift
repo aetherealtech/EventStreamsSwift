@@ -10,24 +10,28 @@ extension SubChannel {
 
     public func asStream() -> EventStream<Value> {
 
-        EventStream(channel: self)
+        ChannelEventStream(channel: self)
     }
 }
 
-extension EventStream {
+class ChannelEventStream<Value> : EventStream<Value> {
     
-    public convenience init<Channel: SubChannel>(
+    public init<Channel: SubChannel>(
         channel: Channel
     ) where Channel.Value == Value {
 
-        self.init(
-            registerValues: { publish, complete -> Subscription in
+        source = channel.erase()
 
-                channel.subscribe(publish)
-            },
-            unregister: { subscription in
+        let channel = SimpleChannel<Event<Value>>()
 
-            }
+        sourceSubscription = source.subscribe { value in channel.publish(Event(value)) }
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: SimpleChannel()
         )
     }
+
+    let source: AnySubChannel<Value>
+    let sourceSubscription: Subscription
 }

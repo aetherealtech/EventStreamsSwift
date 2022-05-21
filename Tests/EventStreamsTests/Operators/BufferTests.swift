@@ -46,7 +46,7 @@ class BufferTests: XCTestCase {
     func testBufferGaps() throws {
         
         let source = SimpleChannel<Int>()
-        let sourceStream = EventStream<Int>(channel: source)
+        let sourceStream = source.asStream()
         
         let size = 7
         let stride = 10

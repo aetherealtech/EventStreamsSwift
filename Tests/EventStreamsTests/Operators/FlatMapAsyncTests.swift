@@ -7,7 +7,7 @@ import XCTest
 import Observer
 @testable import EventStreams
 
-@available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 class FlatMapAsyncTests: XCTestCase {
 
     class Results {
@@ -28,7 +28,7 @@ class FlatMapAsyncTests: XCTestCase {
 
         let innerStreams = innerSources.map { innerSource in
 
-            EventStream<String>(channel: innerSource)
+            innerSource.asStream()
         }
 
         let asyncTransform: (Int) async -> EventStream<String> = { index in

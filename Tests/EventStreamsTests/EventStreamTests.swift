@@ -58,26 +58,4 @@ class EventStreamTests: XCTestCase {
         withExtendedLifetime(subscription1) { }
         withExtendedLifetime(subscription2) { }
     }
-
-    func testRetain() throws {
-
-        let source = SimpleChannel<String>()
-
-        var stream: EventStream<String>? = source
-            .asStream()
-
-        var receivedValue: String?
-
-        let subscription = stream?.subscribe { value in receivedValue = value }
-
-        stream = nil
-
-        let testValue = "SomeTestValue"
-
-        source.publish(testValue)
-
-        XCTAssertEqual(receivedValue, testValue)
-
-        withExtendedLifetime(subscription) { }
-    }
 }

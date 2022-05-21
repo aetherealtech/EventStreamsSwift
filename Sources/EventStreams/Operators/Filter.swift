@@ -17,46 +17,38 @@ extension EventStream {
 
     public func filter(_ condition: @escaping (Value, Date) -> Bool) -> EventStream<Value> {
 
-        EventStream(
-            registerEvents: { publish, complete in
-
-                FilteredEventSource<Value>(
-                    source: self,
-                    condition: { event in condition(event.value, event.time) },
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        FilteredEventStream(
+            source: self,
+            condition:  { event in condition(event.value, event.time) }
         )
     }
 }
 
-class FilteredEventSource<Value>
+class FilteredEventStream<Value> : EventStream<Value>
 {
     init(
         source: EventStream<Value>,
-        condition: @escaping (Event<Value>) -> Bool,
-        publish: @escaping (Event<Value>) -> Void,
-        complete: @escaping () -> Void
+        condition: @escaping (Event<Value>) -> Bool
     ) {
-        
+
+        let channel = SimpleChannel<Event<Value>>()
+
         self.source = source
-        
-        self.sourceSubscription = source.subscribe(
-            onEvent: { event in
-                
-                if condition(event) {
-                    
-                    publish(event)
+
+        self.sourceSubscription = source.eventChannel
+                .subscribe { event in
+
+                    if condition(event) {
+                        channel.publish(event)
+                    }
                 }
-            },
-            onComplete: complete
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: source.completeChannel
         )
     }
-    
-    let source: EventStream<Value>
-    let sourceSubscription: Subscription
+
+    private let source: EventStream<Value>
+    private let sourceSubscription: Subscription
 }

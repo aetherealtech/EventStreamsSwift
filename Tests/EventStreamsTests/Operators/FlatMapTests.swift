@@ -22,7 +22,7 @@ class FlatMapTests: XCTestCase {
         
         let innerStreams = innerSources.map { innerSource in
          
-            EventStream<String>(channel: innerSource)
+            innerSource.asStream()
         }
         
         let transform: (Int) -> EventStream<String> = { index in

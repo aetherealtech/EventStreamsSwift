@@ -12,71 +12,66 @@ extension EventStream {
 
     public func flatten<InnerValue>() -> EventStream<InnerValue> where Value == EventStream<InnerValue> {
 
-        EventStream<InnerValue>(
-            registerEvents: { publish, complete in
-
-                FlattenEventSource<InnerValue>(
-                    source: self,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        FlattenEventStream(
+            source: self
         )
     }
 }
 
-class FlattenEventSource<Value>
+class FlattenEventStream<Value> : EventStream<Value>
 {
     init(
-        source: EventStream<EventStream<Value>>,
-        publish: @escaping (Event<Value>) -> Void,
-        complete: @escaping () -> Void
+        source: EventStream<EventStream<Value>>
     ) {
-        
+
+        let eventChannel = SimpleChannel<Event<Value>>()
+        completeChannelInternal = SimpleChannel<Void>()
+
         self.source = source
-        self.complete = complete
-        
+
+        super.init(
+            eventChannel: eventChannel,
+            completeChannel: completeChannelInternal
+        )
+
         var outerSubscription: Subscription!
-        
+
         outerSubscription = source.subscribe(
             onValue: { innerStream in
-                                
+
                 var subscription: Subscription!
-                
+
                 subscription = innerStream
-                    .subscribe(onEvent: publish, onComplete: {
-                        
-                        self.subscriptions.remove(subscription)
-                        self.checkComplete()
-                    })
-                
+                        .subscribe(onEvent: eventChannel.publish, onComplete: {
+
+                            self.subscriptions.remove(subscription)
+                            self.checkComplete()
+                        })
+
                 subscription
-                    .store(in: &self.subscriptions)
-                
+                        .store(in: &self.subscriptions)
+
             },
             onComplete: {
-                
+
                 self.subscriptions.remove(outerSubscription)
                 self.checkComplete()
             }
         )
-            
+
         outerSubscription
-            .store(in: &subscriptions)
+                .store(in: &subscriptions)
     }
-    
+
     private func checkComplete() {
-        
+
         if subscriptions.isEmpty {
-            complete()
+            completeChannelInternal.publish()
         }
     }
-    
-    let source: EventStream<EventStream<Value>>
-    let complete: () -> Void
-    
-    var subscriptions = Set<Subscription>()
+
+    private let source: EventStream<EventStream<Value>>
+
+    private let completeChannelInternal: SimpleChannel<Void>
+    private var subscriptions = Set<Subscription>()
 }

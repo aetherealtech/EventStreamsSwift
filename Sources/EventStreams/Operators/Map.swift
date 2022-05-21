@@ -33,41 +33,36 @@ extension EventStream {
     
     public func map<Result>(_ transform: @escaping (Value, Date) -> Event<Result>) -> EventStream<Result> {
 
-        EventStream<Result>(
-            registerEvents:
-            { publish, complete in
-
-                MappedEventSource<Value, Result>(
-                    source: self,
-                    transform: { event in transform(event.value, event.time) },
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        MappedEventStream(
+            source: self,
+            transform: { event in transform(event.value, event.time) }
         )
     }
 }
 
-class MappedEventSource<SourceValue, ResultValue>
+class MappedEventStream<SourceValue, ResultValue> : EventStream<ResultValue>
 {
     init(
         source: EventStream<SourceValue>,
-        transform: @escaping (Event<SourceValue>) -> Event<ResultValue>,
-        publish: @escaping (Event<ResultValue>) -> Void,
-        complete: @escaping () -> Void
+        transform: @escaping (Event<SourceValue>) -> Event<ResultValue>
     ) {
-        
+
+        let channel = SimpleChannel<Event<ResultValue>>()
+
         self.source = source
-        
-        self.sourceSubscription = source.subscribe(
-            onEvent: { event in publish(transform(event)) },
-            onComplete: complete
+
+        self.sourceSubscription = source.eventChannel
+                .subscribe { event in
+
+                    channel.publish(transform(event))
+                }
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: source.completeChannel
         )
     }
-    
-    let source: EventStream<SourceValue>
-    let sourceSubscription: Subscription
+
+    private let source: EventStream<SourceValue>
+    private let sourceSubscription: Subscription
 }

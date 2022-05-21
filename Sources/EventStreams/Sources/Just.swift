@@ -13,14 +13,19 @@ extension EventStream {
         on scheduler: Scheduler = DispatchQueue.global()
     ) -> EventStream<Value> {
 
-        EventStream { publish, complete in
+        let eventChannel = SimpleChannel<Event<Value>>()
+        let completeChannel = SimpleChannel<Void>()
 
-            scheduler.run(at: event.time) {
+        scheduler.run(at: event.time) {
 
-                publish(event)
-                complete()
-            }
+            eventChannel.publish(event)
+            completeChannel.publish()
         }
+
+        return EventStream(
+            eventChannel: eventChannel,
+            completeChannel: completeChannel
+        )
     }
     
     public static func just(

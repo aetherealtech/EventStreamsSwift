@@ -12,18 +12,8 @@ extension Collection {
 
     public func merge<Value>() -> EventStream<Value> where Element == EventStream<Value> {
 
-        EventStream<Value>(
-            registerEvents:  { publish, complete in
-
-                MergeEventSource<Value, Self>(
-                    sources: self,
-                    publish: publish,
-                    complete: complete
-                )
-            },
-            unregister: { source in
-
-            }
+        MergeEventStream(
+            sources: self
         )
     }
 }
@@ -32,48 +22,52 @@ extension EventStream {
 
     public func merge(_ other: EventStream<Value>) -> EventStream<Value> {
 
-        return [self, other].merge()
+        [self, other].merge()
     }
 }
 
-class MergeEventSource<Value, SourceCollection: Collection> where SourceCollection.Element == EventStream<Value>
+class MergeEventStream<Value, SourceCollection: Collection> : EventStream<Value> where SourceCollection.Element == EventStream<Value>
 {
     init(
-        sources: SourceCollection,
-        publish: @escaping (Event<Value>) -> Void,
-        complete: @escaping () -> Void
+        sources: SourceCollection
     ) {
-        
+
+        let channel = SimpleChannel<Event<Value>>()
+
         self.sources = sources
-        self.complete = complete
-        
+
+        super.init(
+            eventChannel: channel,
+            completeChannel: completeChannelInternal
+        )
+
         for source in sources {
-            
+
             var subscription: Subscription!
-            
+
             subscription = source.subscribe(
-                onEvent: publish,
+                onEvent: channel.publish,
                 onComplete: {
-                    
+
                     self.subscriptions.remove(subscription)
                     self.checkComplete()
                 }
             )
-                
+
             subscription
-                .store(in: &subscriptions)
+                    .store(in: &subscriptions)
         }
     }
-    
+
+    private let sources: SourceCollection
+    private let completeChannelInternal = SimpleChannel<Void>()
+
+    private var subscriptions = Set<Subscription>()
+
     private func checkComplete() {
-        
+
         if subscriptions.isEmpty {
-            complete()
+            completeChannelInternal.publish()
         }
     }
-    
-    let sources: SourceCollection
-    let complete: () -> Void
-    
-    var subscriptions = Set<Subscription>()
 }
