@@ -11,7 +11,7 @@ extension Publisher {
 
     func toEventStream() -> EventStream<Result<Output, Failure>> {
 
-        TryPublisherEventStream(source: self)
+        PublisherEventStream(source: self)
     }
 }
 
@@ -21,39 +21,13 @@ extension Publisher where Failure == Never {
 
     func toEventStream() -> EventStream<Output> {
 
-        PublisherEventStream(source: self)
+        toEventStream()
+            .ignoreErrors()
     }
 }
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-class PublisherEventStream<Source: Publisher> : EventStream<Source.Output> where Source.Failure == Never {
-
-    typealias Value = Source.Output
-
-    init(
-        source: Source
-    ) {
-
-        self.source = source
-
-        let eventChannel = SimpleChannel<Event<Value>>()
-
-        subscription = source.sink(
-            receiveValue: { value in eventChannel.publish(value) }
-        )
-
-        super.init(
-            channel: eventChannel
-        )
-    }
-
-    private let source: Source
-
-    private let subscription: AnyCancellable
-}
-
-@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-class TryPublisherEventStream<Source: Publisher> : EventStream<Result<Source.Output, Source.Failure>> {
+class PublisherEventStream<Source: Publisher> : EventStream<Result<Source.Output, Source.Failure>> {
 
     typealias Value = Result<Source.Output, Source.Failure>
 
