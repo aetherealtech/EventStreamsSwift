@@ -3,16 +3,34 @@
 //
 
 import Foundation
+import CoreExtensions
 import Observer
 
 extension EventStream {
 
-    public func buffer(count: Int, stride: Int) -> EventStream<[Value]> {
+    public func buffer(
+        count: Int,
+        prefill: Value? = nil
+    ) -> EventStream<[Value]> {
+
+        buffer(
+            count: count,
+            stride: count,
+            prefill: prefill
+        )
+    }
+
+    public func buffer(
+        count: Int,
+        stride: Int,
+        prefill: Value? = nil
+    ) -> EventStream<[Value]> {
 
         BufferEventStream(
             source: self,
             count: count,
-            stride: stride
+            stride: stride,
+            prefill: prefill
         )
     }
 }
@@ -22,7 +40,8 @@ class BufferEventStream<Value> : EventStream<[Value]>
     init(
         source: EventStream<Value>,
         count: Int,
-        stride: Int
+        stride: Int,
+        prefill: Value?
     ) {
 
         self.source = source
@@ -30,7 +49,7 @@ class BufferEventStream<Value> : EventStream<[Value]>
         let skip = max(stride - count, 0)
         var toSkip = 0
 
-        var values: [Value] = []
+        var values = [Value?](repeating: prefill, count: count - 1).compact()
 
         let channel = SimpleChannel<Event<[Value]>>()
 

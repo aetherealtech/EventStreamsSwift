@@ -12,41 +12,13 @@ extension EventStream {
         _ accumulator: @escaping (Result, Value) -> Result
     ) -> EventStream<Result> {
 
-        AccumulateEventStream(
-            source: self,
-            initialValue: initialValue,
-            accumulator: accumulator
-        )
+        var current = initialValue
+
+        return self
+                .map { value -> Result in
+
+                    current = accumulator(current, value)
+                    return current
+                }
     }
-}
-
-class AccumulateEventStream<Value, Result> : EventStream<Result>
-{
-    init(
-        source: EventStream<Value>,
-        initialValue: Result,
-        accumulator: @escaping (Result, Value) -> Result
-    ) {
-
-        let channel = SimpleChannel<Event<Result>>()
-        self.source = source
-
-        var last = initialValue
-
-        subscription = source.subscribe(
-            onValue: { value in
-
-                last = accumulator(last, value)
-                channel.publish(last)
-            }
-        )
-
-        super.init(
-            channel: channel
-        )
-    }
-
-    let source: EventStream<Value>
-
-    let subscription: Subscription
 }

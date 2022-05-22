@@ -12,45 +12,14 @@ extension EventStream {
         _ differentiator: @escaping (Value, Value) -> Result
     ) -> EventStream<Result> {
 
-        DifferenceEventStream(
-            source: self,
-            initialValue: initialValue,
-            differentiator: differentiator
-        )
-    }
-}
+        self
+                .buffer(count: 2, stride: 1)
+                .map { values -> Result in
 
-class DifferenceEventStream<Value, Result> : EventStream<Result>
-{
-    init(
-        source: EventStream<Value>,
-        initialValue: Value?,
-        differentiator: @escaping (Value, Value) -> Result
-    ) {
+                    let previous = values[0]
+                    let current = values[1]
 
-        self.source = source
-
-        var lastOpt = initialValue
-
-        let channel = SimpleChannel<Event<Result>>()
-
-        self.subscription = source.subscribe(
-            onValue: { value in
-
-                if let last = lastOpt {
-                    channel.publish(differentiator(value, last))
+                    return differentiator(current, previous)
                 }
-
-                lastOpt = value
-            }
-        )
-
-        super.init(
-            channel: channel
-        )
     }
-
-    private let source: EventStream<Value>
-
-    private let subscription: Subscription
 }
