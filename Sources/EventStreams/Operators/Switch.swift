@@ -32,6 +32,8 @@ class SwitchEventStream<Value> : EventStream<Value>
         outerSubscription = source.subscribe(
             onValue: { innerStream in
 
+                self.innerSource = innerStream
+
                 self.innerSubscription = innerStream
                         .subscribe(
                             onEvent: eventChannel.publish
@@ -42,6 +44,7 @@ class SwitchEventStream<Value> : EventStream<Value>
     }
 
     private let source: EventStream<EventStream<Value>>
+    private var innerSource: EventStream<Value>?
 
     private var outerSubscription: Subscription! = nil
     private var innerSubscription: Subscription! = nil

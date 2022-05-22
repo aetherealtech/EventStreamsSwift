@@ -32,29 +32,25 @@ class FlattenEventStream<Value> : EventStream<Value>
             channel: eventChannel
         )
 
-        var outerSubscription: Subscription!
+        source
+                .subscribe(
+                    onValue: { innerStream in
 
-        outerSubscription = source.subscribe(
-            onValue: { innerStream in
+                        self.innerStreams.append(innerStream)
 
-                var subscription: Subscription!
+                        innerStream
+                                .subscribe(
+                                    onEvent: eventChannel.publish
+                                )
+                                .store(in: &self.subscriptions)
 
-                subscription = innerStream
-                        .subscribe(
-                            onEvent: eventChannel.publish
-                        )
-
-                subscription
-                        .store(in: &self.subscriptions)
-
-            }
-        )
-
-        outerSubscription
+                    }
+                )
                 .store(in: &subscriptions)
     }
 
     private let source: EventStream<EventStream<Value>>
 
+    private var innerStreams = [EventStream<Value>]()
     private var subscriptions = Set<Subscription>()
 }

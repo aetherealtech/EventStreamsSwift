@@ -37,4 +37,34 @@ extension EventStream {
         self.map { (value, time) -> Task<Event<Result>, Never> in Task { await transform(value, time) } }
                 .await()
     }
+
+    public func mapAsync<ResultValue>(_ transform: @escaping (Value) async throws -> ResultValue) -> EventStream<Result<ResultValue, Error>> {
+
+        mapAsync { value, _ in
+
+            Event<ResultValue>(try await transform(value))
+        }
+    }
+
+    public func mapAsync<ResultValue>(_ transform: @escaping (Value, Date) async throws -> ResultValue) -> EventStream<Result<ResultValue, Error>> {
+
+        mapAsync { value, time in
+
+            Event<ResultValue>(try await transform(value, time))
+        }
+    }
+
+    public func mapAsync<ResultValue>(_ transform: @escaping (Value) async throws -> Event<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
+
+        mapAsync { value, _ in
+
+            try await transform(value)
+        }
+    }
+
+    public func mapAsync<ResultValue>(_ transform: @escaping (Value, Date) async throws -> Event<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
+
+        self.map { (value, time) -> Task<Event<ResultValue>, Error> in Task { try await transform(value, time) } }
+                .await()
+    }
 }
