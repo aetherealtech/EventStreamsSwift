@@ -24,7 +24,7 @@ class FlattenEventStream<Value> : EventStream<Value>
         source: EventStream<EventStream<Value>>
     ) {
 
-        let eventChannel = SimpleChannel<Event<Value>>()
+        let eventChannel = SimpleChannel<Value>()
 
         self.source = source
 
@@ -33,20 +33,16 @@ class FlattenEventStream<Value> : EventStream<Value>
         )
 
         source
-                .subscribe(
-                    onValue: { innerStream in
+            .subscribe { innerStream in
 
-                        self.innerStreams.append(innerStream)
+                self.innerStreams.append(innerStream)
 
-                        innerStream
-                                .subscribe(
-                                    onEvent: eventChannel.publish
-                                )
-                                .store(in: &self.subscriptions)
+                innerStream
+                    .subscribe(eventChannel.publish)
+                    .store(in: &self.subscriptions)
 
-                    }
-                )
-                .store(in: &subscriptions)
+            }
+            .store(in: &subscriptions)
     }
 
     private let source: EventStream<EventStream<Value>>

@@ -14,29 +14,28 @@ class JustTests: XCTestCase {
         let testValue = Int.random(in: 0..<100)
         let testTime = Date().addingTimeInterval(TimeInterval.random(in: 10.0..<100.0))
 
-        let testEvent = Event(testValue, time: testTime)
-
         let scheduler = MockScheduler()
 
         let stream = EventStream.just(
-            testEvent,
+            testValue,
+            at: testTime,
             on: scheduler
         )
 
-        var receivedEvent: Event<Int>? = nil
+        var receivedValue: Int? = nil
 
-        let subscription = stream.subscribe { event in
+        let subscription = stream.subscribe { value in
 
-            receivedEvent = event
+            receivedValue = value
         }
 
-        XCTAssertNil(receivedEvent)
+        XCTAssertNil(receivedValue)
         XCTAssertEqual(scheduler.runAtInvocations.count, 1)
-        XCTAssertEqual(scheduler.runAtInvocations[0].time, testEvent.time)
+        XCTAssertEqual(scheduler.runAtInvocations[0].time, testTime)
         
         scheduler.process()
         
-        XCTAssertEqual(receivedEvent, testEvent)
+        XCTAssertEqual(receivedValue, testValue)
 
         withExtendedLifetime(subscription) { }
     }

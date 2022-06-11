@@ -118,30 +118,21 @@ class PublisherTests: XCTestCase {
         let source = SimpleChannel<Int>()
         let stream = source.asStream()
 
-        let publisher: AnyPublisher<Event<Int>, Never> = stream
+        let publisher: AnyPublisher<Int, Never> = stream
             .toPublisher()
 
-        var receivedEvents: [Event<Int>] = []
+        var receivedValues: [Int] = []
 
         let subscription = publisher.sink { event in
 
-            receivedEvents.append(event)
+            receivedValues.append(event)
         }
-
-        let startDate = Date()
 
         for testValue in testValues {
             source.publish(testValue)
         }
 
-        let endDate = Date()
-
-        let validDateRange = startDate..<endDate
-        XCTAssertEqual(receivedEvents.map { event in event.value }, testValues)
-
-        for receivedEvent in receivedEvents {
-            XCTAssertTrue(validDateRange.contains(receivedEvent.time))
-        }
+        XCTAssertEqual(receivedValues, testValues)
 
         withExtendedLifetime(subscription) { }
     }

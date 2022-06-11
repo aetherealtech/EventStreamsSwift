@@ -9,34 +9,23 @@ import Scheduling
 extension EventStream {
 
     public static func just(
-        _ event: Event<Value>,
+        _ value: Value,
+        at time: Date,
         on scheduler: Scheduler = DispatchQueue.global()
     ) -> EventStream<Value> {
 
-        let channel = SimpleChannel<Event<Value>>()
+        let channel = SimpleChannel<Value>()
 
-        scheduler.run(at: event.time) {
+        scheduler.run(at: time) {
 
-            channel.publish(event)
+            channel.publish(value)
         }
 
         return EventStream(
             channel: channel
         )
     }
-    
-    public static func just(
-        _ value: Value,
-        at time: Date,
-        on scheduler: Scheduler = DispatchQueue.global()
-    ) -> EventStream<Value> {
 
-        just(
-            Event<Value>(value, time: time),
-            on: scheduler
-        )
-    }
-    
     public static func just(
         _ value: Value,
         after delay: TimeInterval,

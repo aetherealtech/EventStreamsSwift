@@ -11,7 +11,7 @@ extension EventStream {
     public static func empty() -> EventStream<Value> {
 
         EventStream(
-            channel: SimpleChannel<Event<Value>>()
+            channel: SimpleChannel<Value>()
         )
     }
 }

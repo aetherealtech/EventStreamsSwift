@@ -32,7 +32,7 @@ class MergeEventStream<Value, SourceCollection: Collection> : EventStream<Value>
         sources: SourceCollection
     ) {
 
-        let channel = SimpleChannel<Event<Value>>()
+        let channel = SimpleChannel<Value>()
 
         self.sources = sources
 
@@ -42,14 +42,9 @@ class MergeEventStream<Value, SourceCollection: Collection> : EventStream<Value>
 
         for source in sources {
 
-            var subscription: Subscription!
-
-            subscription = source.subscribe(
-                onEvent: channel.publish
-            )
-
-            subscription
-                    .store(in: &subscriptions)
+            source
+                .subscribe(channel.publish)
+                .store(in: &subscriptions)
         }
     }
 

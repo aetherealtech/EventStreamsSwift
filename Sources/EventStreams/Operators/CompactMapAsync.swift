@@ -9,14 +9,6 @@ extension EventStream {
 
     public func compactMapAsync<Result>(_ transform: @escaping (Value) async -> Result?) -> EventStream<Result> {
 
-        compactMapAsync { value, date in
-            
-            await transform(value)
-        }
-    }
-    
-    public func compactMapAsync<Result>(_ transform: @escaping (Value, Date) async -> Result?) -> EventStream<Result> {
-
         self
             .mapAsync(transform)
             .compact()
@@ -24,27 +16,19 @@ extension EventStream {
 
     public func compactMapAsync<ResultValue>(_ transform: @escaping (Value) async throws -> ResultValue?) -> EventStream<Result<ResultValue, Error>> {
 
-        compactMapAsync { value, date in
-
-            try await transform(value)
-        }
-    }
-
-    public func compactMapAsync<ResultValue>(_ transform: @escaping (Value, Date) async throws -> ResultValue?) -> EventStream<Result<ResultValue, Error>> {
-
         self
-                .mapAsync(transform)
-                .map { result -> Result<ResultValue, Error>? in
+            .mapAsync(transform)
+            .map { result -> Result<ResultValue, Error>? in
 
-                    switch result {
+                switch result {
 
-                    case .success(let value):
-                        return value.map { value in Result<ResultValue, Error>.success(value) }
+                case .success(let value):
+                    return value.map { value in Result<ResultValue, Error>.success(value) }
 
-                    case .failure(let error):
-                        return .failure(error)
-                    }
+                case .failure(let error):
+                    return .failure(error)
                 }
-                .compact()
+            }
+            .compact()
     }
 }

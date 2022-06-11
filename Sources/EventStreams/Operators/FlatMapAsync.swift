@@ -13,59 +13,29 @@ extension EventStream {
     public func flatMapAsync<Result>(_ transform: @escaping (Value) -> EventStream<Task<Result, Never>>) -> EventStream<Result> {
 
         self
-                .flatMap(transform)
-                .await()
-    }
-
-    public func flatMapAsync<Result>(_ transform: @escaping (Value, Date) -> EventStream<Task<Result, Never>>) -> EventStream<Result> {
-
-        self
-                .flatMap(transform)
-                .await()
+            .flatMap(transform)
+            .await()
     }
 
     public func flatMapAsync<Result>(_ transform: @escaping (Value) async -> EventStream<Result>) -> EventStream<Result> {
 
-        flatMapAsync { value, date in
-
-            await transform(value)
-        }
-    }
-
-    public func flatMapAsync<Result>(_ transform: @escaping (Value, Date) async -> EventStream<Result>) -> EventStream<Result> {
-
         self
-                .mapAsync(transform)
-                .flatten()
+            .mapAsync(transform)
+            .flatten()
     }
 
     public func flatMapAsync<ResultValue>(_ transform: @escaping (Value) -> EventStream<Task<ResultValue, Error>>) -> EventStream<Result<ResultValue, Error>> {
 
         self
-                .flatMap(transform)
-                .await()
-    }
-
-    public func flatMapAsync<ResultValue>(_ transform: @escaping (Value, Date) -> EventStream<Task<ResultValue, Error>>) -> EventStream<Result<ResultValue, Error>> {
-
-        self
-                .flatMap(transform)
-                .await()
+            .flatMap(transform)
+            .await()
     }
 
     public func flatMapAsync<ResultValue>(_ transform: @escaping (Value) async throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
 
-        flatMapAsync { value, date in
-
-            try await transform(value)
-        }
-    }
-
-    public func flatMapAsync<ResultValue>(_ transform: @escaping (Value, Date) async throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
-
         self
-                .mapAsync { value, time in Task { try await transform(value, time) } }
-                .await()
-                .flatMap { result in try result.get() }
+            .mapAsync { value in Task { try await transform(value) } }
+            .await()
+            .flatMap { result in try result.get() }
     }
 }

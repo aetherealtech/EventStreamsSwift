@@ -9,30 +9,18 @@ import Observer
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 extension EventStream {
 
-    public func await<Success>() -> EventStream<Result<Success, Error>> where Value == Task<Event<Success>, Error> {
+    public func await<Success>() -> EventStream<Result<Success, Error>> where Value == Task<Success, Error> {
 
         TryAwaitEventStream(
             source: self
         )
     }
 
-    public func await<Success>() -> EventStream<Success> where Value == Task<Event<Success>, Never> {
+    public func await<Success>() -> EventStream<Success> where Value == Task<Success, Never> {
 
         AwaitEventStream(
             source: self
         )
-    }
-
-    public func await<Success>() -> EventStream<Result<Success, Error>> where Value == Task<Success, Error> {
-
-        self.map { task -> Task<Event<Success>, Error> in task.map { value in Event<Success>(value) }}
-                .await()
-    }
-
-    public func await<Success>() -> EventStream<Success> where Value == Task<Success, Never> {
-
-        self.map { task -> Task<Event<Success>, Never> in task.map { value in Event<Success>(value) }}
-                .await()
     }
 }
 
@@ -40,18 +28,18 @@ extension EventStream {
 class AwaitEventStream<Value> : EventStream<Value>
 {
     init(
-        source: EventStream<Task<Event<Value>, Never>>
+        source: EventStream<Task<Value, Never>>
     ) {
 
-        let channel = SimpleChannel<Event<Value>>()
+        let channel = SimpleChannel<Value>()
 
         self.source = source
 
-        self.sourceSubscription = source.subscribe { event in
+        self.sourceSubscription = source.subscribe { task in
 
             Task {
 
-                channel.publish(await event.value.value)
+                channel.publish(await task.value)
             }
         }
 
@@ -60,7 +48,7 @@ class AwaitEventStream<Value> : EventStream<Value>
         )
     }
 
-    private let source: EventStream<Task<Event<Value>, Never>>
+    private let source: EventStream<Task<Value, Never>>
 
     private let sourceSubscription: Subscription
 }
@@ -69,28 +57,27 @@ class AwaitEventStream<Value> : EventStream<Value>
 class TryAwaitEventStream<Success> : EventStream<Result<Success, Error>>
 {
     init(
-        source: EventStream<Task<Event<Success>, Error>>
+        source: EventStream<Task<Success, Error>>
     ) {
 
-        let channel = SimpleChannel<Event<Result<Success, Error>>>()
+        let channel = SimpleChannel<Result<Success, Error>>()
 
         self.source = source
 
         self.sourceSubscription = source.subscribe(
-            onEvent: { event in
+            { task in
 
                 Task {
 
-                    let result: Event<Result<Success, Error>>
+                    let result: Result<Success, Error>
 
                     do {
 
-                        let resultEvent = try await event.value.value
-                        result = Event(.success(resultEvent.value), time: resultEvent.time)
+                        result = .success(try await task.value)
                     }
                     catch(let error) {
 
-                        result = Event(.failure(error))
+                        result = .failure(error)
                     }
 
                     channel.publish(result)
@@ -103,7 +90,7 @@ class TryAwaitEventStream<Success> : EventStream<Result<Success, Error>>
         )
     }
 
-    private let source: EventStream<Task<Event<Success>, Error>>
+    private let source: EventStream<Task<Success, Error>>
 
     private let sourceSubscription: Subscription
 }

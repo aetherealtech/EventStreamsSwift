@@ -37,7 +37,7 @@ class PublisherEventStream<Source: Publisher> : EventStream<Result<Source.Output
 
         self.source = source
 
-        let eventChannel = SimpleChannel<Event<Value>>()
+        let eventChannel = SimpleChannel<Value>()
 
         subscription = source.sink(
             receiveCompletion: { result in
@@ -46,7 +46,10 @@ class PublisherEventStream<Source: Publisher> : EventStream<Result<Source.Output
                     eventChannel.publish(.failure(error))
                 }
             },
-            receiveValue: { value in eventChannel.publish(.success(value)) }
+            receiveValue: { value in
+
+                eventChannel.publish(.success(value))
+            }
         )
 
         super.init(
@@ -64,7 +67,7 @@ extension EventStream {
     
     class EventStreamPublisher: Publisher {
 
-        typealias Output = Event<Value>
+        typealias Output = Value
         typealias Failure = Never
         
         init(
@@ -74,12 +77,12 @@ extension EventStream {
             self.stream = stream
         }
         
-        func receive<S>(subscriber: S) where S : Combine.Subscriber, S.Failure == Never, S.Input == Event<Value> {
+        func receive<S>(subscriber: S) where S : Combine.Subscriber, S.Failure == Never, S.Input == Value {
             
             stream
-                .subscribe { event in
-                    
-                    _ = subscriber.receive(event)
+                .subscribe { value in
+
+                    _ = subscriber.receive(value)
                 }
                 .store(in: &subscriptions)
         }
@@ -89,17 +92,8 @@ extension EventStream {
         private var subscriptions = Set<Observer.Subscription>()
     }
     
-    func toPublisher() -> AnyPublisher<Event<Value>, Never> {
+    func toPublisher() -> AnyPublisher<Value, Never> {
         
         EventStreamPublisher(stream: self).eraseToAnyPublisher()
-    }
-
-    func toPublisher() -> AnyPublisher<Value, Never> {
-
-        let publisher: AnyPublisher<Event<Value>, Never> = toPublisher()
-
-        return publisher
-            .map { event in event.value }
-            .eraseToAnyPublisher()
     }
 }

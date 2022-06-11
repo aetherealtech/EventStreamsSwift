@@ -12,14 +12,6 @@ extension EventStream {
 
     public func flatMap<Result>(_ transform: @escaping (Value) -> EventStream<Result>) -> EventStream<Result> {
 
-        flatMap { value, date in
-            
-            transform(value)
-        }
-    }
-    
-    public func flatMap<Result>(_ transform: @escaping (Value, Date) -> EventStream<Result>) -> EventStream<Result> {
-
         self
             .map(transform)
             .flatten()
@@ -27,20 +19,9 @@ extension EventStream {
 
     public func flatMap<ResultValue>(_ transform: @escaping (Value) throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
 
-        flatMap { value, date in
-
-            try transform(value)
-        }
-    }
-
-    public func flatMap<ResultValue>(_ transform: @escaping (Value, Date) throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
-
         TryFlatMapEventStream(
             source: self,
-            transform: { event in
-
-                try transform(event.value, event.time)
-            }
+            transform: transform
         )
     }
 }
@@ -49,10 +30,10 @@ class TryFlatMapEventStream<Input, Value> : EventStream<Result<Value, Error>>
 {
     init(
         source: EventStream<Input>,
-        transform: @escaping (Event<Input>) throws -> EventStream<Value>
+        transform: @escaping (Input) throws -> EventStream<Value>
     ) {
 
-        let eventChannel = SimpleChannel<Event<Result<Value, Error>>>()
+        let eventChannel = SimpleChannel<Result<Value, Error>>()
 
         self.source = source
 
@@ -61,31 +42,29 @@ class TryFlatMapEventStream<Input, Value> : EventStream<Result<Value, Error>>
         )
 
         source
-                .subscribe(
-                    onEvent: { outerEvent in
+            .subscribe { outerValue in
 
-                        do {
+                let innerStream: EventStream<Value>
 
-                            let innerStream = try transform(outerEvent)
+                do {
 
-                            self.innerStreams.append(innerStream)
+                    innerStream = try transform(outerValue)
 
-                            innerStream
-                                    .subscribe(
-                                        onEvent: { event in
+                    self.innerStreams.append(innerStream)
 
-                                            eventChannel.publish(Event(.success(event.value), time: event.time))
-                                        }
-                                    )
-                                    .store(in: &self.subscriptions)
+                    innerStream
+                        .subscribe { innerValue in
 
-                        } catch(let error) {
-
-                            eventChannel.publish(.failure(error))
+                            eventChannel.publish(.success(innerValue))
                         }
-                    }
-                )
-                .store(in: &subscriptions)
+                        .store(in: &self.subscriptions)
+
+                } catch(let error) {
+
+                    eventChannel.publish(.failure(error))
+                }
+            }
+            .store(in: &subscriptions)
     }
 
     private let source: EventStream<Input>

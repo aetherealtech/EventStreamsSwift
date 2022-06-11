@@ -10,12 +10,17 @@ extension EventStream {
 
         var lastTime = Date(timeIntervalSince1970: 0)
 
-        return self.filter { value, time in
-            
-            let timeInterval = time.timeIntervalSince(lastTime)
-            lastTime = time
+        return self
+            .timestamped()
+            .filter { timestampedValue in
 
-            return timeInterval >= tolerance
-        }
+                let time = timestampedValue.time
+
+                let timeInterval = time.timeIntervalSince(lastTime)
+                lastTime = time
+
+                return timeInterval >= tolerance
+            }
+            .map { timestamped in timestamped.value }
     }
 }

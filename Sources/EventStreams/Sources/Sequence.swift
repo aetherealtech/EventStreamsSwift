@@ -27,12 +27,12 @@ extension EventStream {
     public static func sequence<Value, Values: Sequence>(
         values: Values,
         on scheduler: Scheduler = DispatchQueue.global()
-    ) -> EventStream<Value> where Values.Element == Event<Value> {
+    ) -> EventStream<Value> where Values.Element == (Value, Date) {
 
         sequence(
             values: values,
-            getValue: { event in event.value },
-            getTime: { event in event.time },
+            getValue: { event in event.0 },
+            getTime: { event in event.1 },
             on: scheduler
         )
     }
@@ -60,14 +60,14 @@ class SequenceEventStream<Value, ValueAndTime, Values: Sequence> : EventStream<V
         scheduler: Scheduler
     ) {
 
-        let eventsChannel = SimpleChannel<Event<Value>>()
+        let eventsChannel = SimpleChannel<Value>()
 
         self.timer = scheduler.runTimer(
             values: values,
             getFireTime: getTime,
             onFire: { valueAndTime in
 
-                eventsChannel.publish(Event(getValue(valueAndTime), time: getTime(valueAndTime)))
+                eventsChannel.publish(getValue(valueAndTime))
             },
             onComplete: { }
         )

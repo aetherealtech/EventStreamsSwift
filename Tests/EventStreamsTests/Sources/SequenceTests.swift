@@ -15,11 +15,11 @@ class SequenceTests: XCTestCase {
         let startTime = Date()
         let interval = TimeInterval.random(in: 10.0..<100.0)
 
-        let testEvents = (0..<10).map { index -> Event<Int> in
+        let testEvents = (0..<10).map { index -> (Int, Date) in
 
             let time = startTime.addingTimeInterval(interval * TimeInterval(index))
 
-            return Event(index, time: time)
+            return (index, time: time)
         }
 
         let scheduler = MockScheduler()
@@ -29,23 +29,23 @@ class SequenceTests: XCTestCase {
             on: scheduler
         )
 
-        var receivedEvents: [Event<Int>] = []
+        var receivedValues: [Int] = []
 
-        let subscription = stream.subscribe { event in
+        let subscription = stream.subscribe { value in
 
-            receivedEvents.append(event)
+            receivedValues.append(value)
         }
 
-        XCTAssertEqual(receivedEvents, [])
+        XCTAssertEqual(receivedValues, [])
 
         scheduler.process()
 
-        XCTAssertEqual(receivedEvents, testEvents)
+        XCTAssertEqual(receivedValues, testEvents.map { event in event.0 })
         XCTAssertEqual(scheduler.runAtInvocations.count, testEvents.count)
 
         for (invocation, testEvent) in zip(scheduler.runAtInvocations, testEvents) {
 
-            XCTAssertEqual(invocation.time, testEvent.time)
+            XCTAssertEqual(invocation.time, testEvent.1)
         }
 
         withExtendedLifetime(subscription) { }

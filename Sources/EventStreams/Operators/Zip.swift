@@ -4,6 +4,7 @@
 
 import Foundation
 import Observer
+import CoreExtensions
 
 extension EventStream {
 
@@ -67,7 +68,7 @@ extension Array {
 class ZipEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
 {
     typealias Value = (Value1, Value2)
-    
+
     init(
         source1: EventStream<Value1>,
         source2: EventStream<Value2>
@@ -76,57 +77,59 @@ class ZipEventStream<Value1, Value2> : EventStream<(Value1, Value2)>
         self.source1 = source1
         self.source2 = source2
 
-        var value1: Value1?
-        var value2: Value2?
-
-        let channel = SimpleChannel<Event<Value>>()
-
-        let send: () -> Void = {
-
-            if let v1 = value1, let v2 = value2 {
-
-                channel.publish((v1, v2))
-                
-                value1 = nil
-                value2 = nil
-            }
-        }
-
         super.init(
             channel: channel
         )
 
-        var subscription1: Subscription!
-        
-        subscription1 = source1.subscribe(
-            onValue: { v1 in
-                
-                value1 = v1
-                send()
+        source1
+            .subscribe { [weak self] v1 in
+
+                self?.update { values in
+                    values.first = v1
+                }
             }
-        )
-            
-        subscription1
             .store(in: &subscriptions)
-        
-        var subscription2: Subscription!
-        
-        subscription2 = source2.subscribe(
-            onValue: { v2 in
-                
-                value2 = v2
-                send()
+
+        source2
+            .subscribe { [weak self] v2 in
+
+                self?.update { values in
+                    values.second = v2
+                }
             }
-        )
-        
-        subscription2
             .store(in: &subscriptions)
     }
+
+    private typealias Values = (first: Value1?, second: Value2?)
 
     private let source1: EventStream<Value1>
     private let source2: EventStream<Value2>
 
+    private let channel = SimpleChannel<Value>()
+
+    private var values: Atomic<Values> = Atomic((nil, nil))
+
     private var subscriptions = Set<Subscription>()
+
+    private func update(updater: (inout Values) -> Void) {
+
+        let values = values.exclusiveLock { values -> Value? in
+            updater(&values)
+
+            if let value1 = values.first, let value2 = values.second {
+                let current = (value1, value2)
+                values = (nil, nil)
+                return current
+            }
+
+            return nil
+        }
+
+        if let values = values {
+
+            channel.publish(values)
+        }
+    }
 }
 
 class ArrayZipEventStream<Value> : EventStream<[Value]>
@@ -137,42 +140,51 @@ class ArrayZipEventStream<Value> : EventStream<[Value]>
         
         self.sources = sources
 
-        let channel = SimpleChannel<Event<[Value]>>()
-
-        var values: [Value?] = sources.map { _ in nil }
+        self.values = Atomic<[Value?]>(Array(repeating: nil, count: sources.count))
 
         super.init(
             channel: channel
         )
 
-        let send: () -> Void = {
-
-            let readyValues = values.compactMap { value in value }
-            guard readyValues.count == values.count else { return }
-
-            channel.publish(readyValues)
-            
-            values = sources.map { _ in nil }
-        }
-
         sources.enumerated().forEach { index, sourceStream in
 
-            var subscription: Subscription!
-            
-            subscription = sourceStream.subscribe(
-                onEvent: { event in
-                    
-                    values[index] = event.value
-                    send()
+            sourceStream
+                .subscribe { [weak self] value in
+
+                    self?.update { values in
+                        values[index] = value
+                    }
                 }
-            )
-            
-            subscription
                 .store(in: &subscriptions)
         }
     }
 
     private let sources: [EventStream<Value>]
 
+    private let channel = SimpleChannel<[Value]>()
+
+    private var values: Atomic<[Value?]>
+
     private var subscriptions = Set<Subscription>()
+
+    private func update(updater: (inout [Value?]) -> Void) {
+
+        let values = values.exclusiveLock { values -> [Value]? in
+            updater(&values)
+
+            let readyValues = values.compactMap { value in value }
+            if readyValues.count == values.count {
+
+                values = Array(repeating: nil, count: sources.count)
+                return readyValues
+            }
+
+            return nil
+        }
+
+        if let values = values {
+
+            channel.publish(values)
+        }
+    }
 }

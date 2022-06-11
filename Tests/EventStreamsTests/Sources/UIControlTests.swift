@@ -21,9 +21,9 @@ class UIControlTests: XCTestCase {
         var expectedEvents: [Range<Date>] = []
         var receivedEvents: [Date] = []
 
-        let subscription = stream.subscribe { event in
+        let subscription = stream.subscribe { value in
 
-            receivedEvents.append(event.time)
+            receivedEvents.append(Date())
         }
 
         for _ in 0..<10 {

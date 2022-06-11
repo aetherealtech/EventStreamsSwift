@@ -51,12 +51,10 @@ class BufferEventStream<Value> : EventStream<[Value]>
 
         var values = [Value?](repeating: prefill, count: count - 1).compact()
 
-        let channel = SimpleChannel<Event<[Value]>>()
+        let channel = SimpleChannel<[Value]>()
 
         self.subscription = source.subscribe(
-            onEvent: { event in
-
-                let value = event.value
+            { value in
 
                 if toSkip > 0 {
                     toSkip -= 1

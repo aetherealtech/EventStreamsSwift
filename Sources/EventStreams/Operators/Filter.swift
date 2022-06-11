@@ -9,17 +9,9 @@ extension EventStream {
 
     public func filter(_ condition: @escaping (Value) -> Bool) -> EventStream<Value> {
 
-        filter { value, date in
-            
-            condition(value)
-        }
-    }
-
-    public func filter(_ condition: @escaping (Value, Date) -> Bool) -> EventStream<Value> {
-
         FilteredEventStream(
             source: self,
-            condition:  { event in condition(event.value, event.time) }
+            condition: condition
         )
     }
 }
@@ -28,20 +20,20 @@ class FilteredEventStream<Value> : EventStream<Value>
 {
     init(
         source: EventStream<Value>,
-        condition: @escaping (Event<Value>) -> Bool
+        condition: @escaping (Value) -> Bool
     ) {
 
-        let channel = SimpleChannel<Event<Value>>()
+        let channel = SimpleChannel<Value>()
 
         self.source = source
 
         self.sourceSubscription = source
-                .subscribe(onEvent: { event in
+                .subscribe { value in
 
-                    if condition(event) {
-                        channel.publish(event)
+                    if condition(value) {
+                        channel.publish(value)
                     }
-                })
+                }
 
         super.init(
             channel: channel
