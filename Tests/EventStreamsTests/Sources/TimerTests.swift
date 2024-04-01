@@ -18,9 +18,6 @@ final class TimerTests: XCTestCase {
 
             let scheduler = MockScheduler()
 
-            @Synchronized
-            var completedAfterInvocations: Int? = nil
-
             let timer = scheduler.timer(
                 at: fireDates
             )
@@ -36,7 +33,6 @@ final class TimerTests: XCTestCase {
             }))
             
             try assertEqual(workInvocations, fireDates.count)
-            try assertEqual(completedAfterInvocations, workInvocations)
         }
     }
     
@@ -52,10 +48,7 @@ final class TimerTests: XCTestCase {
             var workInvocations = 0
 
             let scheduler = MockScheduler()
-
-            @Synchronized
-            var completedAfterInvocations: Int? = nil
-  
+            
             @Synchronized
             var timer: EventStreams.Timer<MockScheduler>! = nil
 
@@ -77,7 +70,6 @@ final class TimerTests: XCTestCase {
             scheduler.process()
 
             try assertEqual(workInvocations, invocationsCount)
-            try assertEqual(completedAfterInvocations, workInvocations)
         }
     }
 }

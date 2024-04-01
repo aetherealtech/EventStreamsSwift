@@ -28,6 +28,8 @@ public final class Timer<
 
         self.scheduler = scheduler
         self.nextFireTime = { [_fireTimeIterator] in _fireTimeIterator.wrappedValue.next() }
+        
+        scheduleNext()
     }
     
     public func subscribe(
@@ -52,9 +54,7 @@ public final class Timer<
     }
     
     public let scheduler: Scheduler
-    
-    private let _running = Synchronized<Bool>(wrappedValue: true)
-    
+        
     private let nextFireTime: @Sendable () -> Instant?
     private let channel = SimpleChannel<Void>()
 }
