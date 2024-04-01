@@ -1,40 +1,38 @@
 //
-//  File.swift
-//  
-//
 //  Created by Daniel Coleman on 1/9/22.
 //
 
-import Foundation
-
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-extension EventStream {
-
-    public func flatMapAsync<Result>(_ transform: @escaping (Value) -> EventStream<Task<Result, Never>>) -> EventStream<Result> {
-
+public extension EventStream {
+    func flatMap<InnerResult, OuterResult: EventStream<Task<InnerResult, Never>>>(
+        _ transform: @escaping @Sendable (Value) -> OuterResult
+    ) -> AwaitEventStream<InnerResult, FlattenEventStream<MapEventStream<Self, OuterResult>>> {
         self
             .flatMap(transform)
             .await()
     }
 
-    public func flatMapAsync<Result>(_ transform: @escaping (Value) async -> EventStream<Result>) -> EventStream<Result> {
-
+    func flatMap<InnerResult, OuterResult: EventStream<InnerResult>>(
+        _ transform: @escaping @Sendable (Value) async -> OuterResult
+    ) -> FlattenEventStream<AwaitEventStream<OuterResult, MapEventStream<Self, Task<OuterResult, Never>>>> where Value: Sendable {
         self
-            .mapAsync(transform)
+            .map(transform)
             .flatten()
     }
 
-    public func flatMapAsync<ResultValue>(_ transform: @escaping (Value) -> EventStream<Task<ResultValue, Error>>) -> EventStream<Result<ResultValue, Error>> {
-
+    func flatMap<InnerResult, OuterResult: EventStream<Task<InnerResult, any Error>>>(
+        _ transform: @escaping @Sendable (Value) -> OuterResult
+    ) -> TryAwaitEventStream<InnerResult, FlattenEventStream<MapEventStream<Self, OuterResult>>> {
         self
             .flatMap(transform)
             .await()
     }
 
-    public func flatMapAsync<ResultValue>(_ transform: @escaping (Value) async throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
-
+    func flatMap<InnerResult, OuterResult: EventStream<InnerResult>>(
+        _ transform: @escaping @Sendable (Value) async throws -> OuterResult
+    ) -> TryFlatMapEventStream<TryAwaitEventStream<OuterResult, MapEventStream<Self, Task<OuterResult, any Error>>>, OuterResult> where Value: Sendable {
         self
-            .mapAsync { value in Task { try await transform(value) } }
+            .map { value in Task { try await transform(value) } }
             .await()
             .flatMap { result in try result.get() }
     }

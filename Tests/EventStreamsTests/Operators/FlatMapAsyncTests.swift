@@ -2,37 +2,29 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-class FlatMapAsyncTests: XCTestCase {
-
-    class Results {
-
-        var result = Set<String>()
-    }
-
+final class FlatMapAsyncTests: XCTestCase {
     func testFlatMapAsync() async throws {
-
         let source = SimpleChannel<Int>()
 
         let testEvents = Set<Int>(0..<10)
 
         let innerSources: [SimpleChannel<String>] = testEvents.map { _ in
-
             SimpleChannel<String>()
         }
 
         let innerStreams = innerSources.map { innerSource in
-
-            innerSource.asStream()
+            innerSource.stream
         }
 
-        let asyncTransform: (Int) async -> EventStream<String> = { index in
-
+        let asyncTransform: @Sendable (Int) async -> ChannelEventStream<SimpleChannel<String>> = { index in
             try! await Task.sleep(nanoseconds: UInt64(1e3))
 
             return innerStreams[index]
@@ -40,23 +32,20 @@ class FlatMapAsyncTests: XCTestCase {
 
         var expectedEvents = Set<String>()
 
-        let sourceStream = source.asStream()
-        let flatMappedStream = sourceStream.flatMapAsync(asyncTransform)
-
-        let receivedEvents = Results()
+        let sourceStream = source.stream
+        let flatMappedStream = sourceStream.flatMap(asyncTransform)
         
-        let subscription = flatMappedStream.subscribe { (event: String) in
-
+        @Synchronized
+        var receivedEvents = Set<String>()
+        
+        let _ = flatMappedStream.subscribe { [_receivedEvents] (event: String) in
             DispatchQueue.main.async {
-
-                receivedEvents.result.insert(event)
+                _receivedEvents.wrappedValue.insert(event)
             }
         }
 
         for event in testEvents {
-
             let innerEvents = (0..<10).map { index in
-
                 "\(event)-\(index)"
             }
 
@@ -75,9 +64,7 @@ class FlatMapAsyncTests: XCTestCase {
         }
 
         for (index, innerSource) in innerSources.enumerated() {
-
             for innerIndex in 0..<10 {
-
                 let additionalEvent = "Additional event \(innerIndex) from source \(index)"
                 innerSource.publish(additionalEvent)
                 expectedEvents.insert((additionalEvent))
@@ -86,8 +73,6 @@ class FlatMapAsyncTests: XCTestCase {
 
         try await Task.sleep(nanoseconds: UInt64(3e9))
 
-        XCTAssertEqual(receivedEvents.result, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
 }

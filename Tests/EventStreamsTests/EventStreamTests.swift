@@ -2,60 +2,59 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
-class EventStreamTests: XCTestCase {
-
+final class EventStreamTests: XCTestCase {
     func testPublish() throws {
-
         let source = SimpleChannel<String>()
 
         let stream = source
-            .asStream()
+            .stream
 
+        @Synchronized
         var receivedValue1: String?
+        
+        @Synchronized
         var receivedValue2: String?
 
-        let subscription1 = stream.subscribe { value in receivedValue1 = value }
-        let subscription2 = stream.subscribe { value in receivedValue2 = value }
+        let _ = stream.subscribe { [_receivedValue1] value in _receivedValue1.wrappedValue = value }
+        let _ = stream.subscribe { [_receivedValue2] value in _receivedValue2.wrappedValue = value }
 
         let testValue = "SomeTestValue"
 
         source.publish(testValue)
 
-        XCTAssertEqual(receivedValue1, testValue)
-        XCTAssertEqual(receivedValue2, testValue)
-
-        withExtendedLifetime(subscription1) { }
-        withExtendedLifetime(subscription2) { }
+        try assertEqual(receivedValue1, testValue)
+        try assertEqual(receivedValue2, testValue)
     }
 
     func testUnsubscribe() throws {
-
         let source = SimpleChannel<String>()
 
         let stream = source
-            .asStream()
+            .stream
 
+        @Synchronized
         var receivedValue1: String?
+        
+        @Synchronized
         var receivedValue2: String?
 
-        let subscription1 = stream.subscribe { value in receivedValue1 = value }
-        var subscription2: Subscription? = stream.subscribe { value in receivedValue2 = value }
+        let _ = stream.subscribe { [_receivedValue1] value in _receivedValue1.wrappedValue = value }
+        let subscription = stream.subscribe { [_receivedValue2] value in _receivedValue2.wrappedValue = value }
 
         let testValue = "SomeTestValue"
 
-        subscription2 = nil
+        subscription.cancel()
 
         source.publish(testValue)
 
-        XCTAssertEqual(receivedValue1, testValue)
-        XCTAssertNil(receivedValue2)
-
-        withExtendedLifetime(subscription1) { }
-        withExtendedLifetime(subscription2) { }
+        try assertEqual(receivedValue1, testValue)
+        try assertNil(receivedValue2)
     }
 }

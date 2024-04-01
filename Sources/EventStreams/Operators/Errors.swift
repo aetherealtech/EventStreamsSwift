@@ -3,99 +3,87 @@
 //
 
 import Foundation
-import CoreExtensions
 import Observer
+import ResultExtensions
 
-extension EventStream {
-
-    public func mapValues<InSuccess, OutSuccess, Failure: Error>(
-        _ transform: @escaping (InSuccess) -> OutSuccess
-    ) -> EventStream<Result<OutSuccess, Failure>> where Value == Result<InSuccess, Failure> {
+public extension EventStream {
+    func mapValues<InSuccess, OutSuccess, Failure: Error>(
+        _ transform: @escaping @Sendable (InSuccess) -> OutSuccess
+    ) -> MapEventStream<Self, Result<OutSuccess, Failure>> where Value == Result<InSuccess, Failure> {
 
         self
-            .map { result in result
-
-                .map(transform)
+            .map { result in 
+                result
+                    .map(transform)
             }
     }
 
-    public func tryMapValues<InSuccess, OutSuccess>(
-        _ transform: @escaping (InSuccess) throws -> OutSuccess
-    ) -> EventStream<Result<OutSuccess, Error>> where Value == Result<InSuccess, Error> {
-
+    func tryMapValues<InSuccess, OutSuccess>(
+        _ transform: @escaping @Sendable (InSuccess) throws -> OutSuccess
+    ) -> MapEventStream<Self, Result<OutSuccess, any Error>> where Value == Result<InSuccess, any Error> {
         self
-            .map { result in result
-
-                .tryMap(transform)
+            .map { result in 
+                result
+                    .tryMap(transform)
             }
     }
 
-    public func mapErrors<Success, InFailure: Error, OutFailure: Error>(
-        _ transform: @escaping (InFailure) -> OutFailure
-    ) -> EventStream<Result<Success, OutFailure>> where Value == Result<Success, InFailure> {
-
+    func mapErrors<Success, InFailure: Error, OutFailure: Error>(
+        _ transform: @escaping @Sendable (InFailure) -> OutFailure
+    ) -> MapEventStream<Self, Result<Success, OutFailure>> where Value == Result<Success, InFailure> {
         self
             .map { result in result.mapError(transform) }
     }
 
-    public func tryMapErrors<Success, InFailure: Error>(
-        _ transform: @escaping (InFailure) throws -> Error
-    ) -> EventStream<Result<Success, Error>> where Value == Result<Success, InFailure> {
-
+    func tryMapErrors<Success, InFailure: Error>(
+        _ transform: @escaping @Sendable (InFailure) throws -> Error
+    ) -> MapEventStream<Self, Result<Success, any Error>> where Value == Result<Success, InFailure> {
         self
             .map { result in result.tryMapError(transform) }
     }
 
-    public func compactMapValues<InSuccess, OutSuccess, Failure: Error>(
-        _ transform: @escaping (InSuccess) -> OutSuccess?
-    ) -> EventStream<Result<OutSuccess, Failure>> where Value == Result<InSuccess, Failure> {
-
+    func compactMapValues<InSuccess, OutSuccess, Failure: Error>(
+        _ transform: @escaping @Sendable (InSuccess) -> OutSuccess?
+    ) -> CompactEventStream<Result<OutSuccess, Failure>, MapEventStream<Self, Result<OutSuccess, Failure>?>> where Value == Result<InSuccess, Failure> {
         self
             .compactMap { result in
-
                 result
                     .compactMap(transform)
             }
     }
 
-    public func tryCompactMapValues<InSuccess, OutSuccess>(
-        _ transform: @escaping (InSuccess) throws -> OutSuccess?
-    ) -> EventStream<Result<OutSuccess, Error>> where Value == Result<InSuccess, Error> {
-
+    func tryCompactMapValues<InSuccess, OutSuccess>(
+        _ transform: @escaping @Sendable (InSuccess) throws -> OutSuccess?
+    ) -> CompactEventStream<Result<OutSuccess, any Error>, MapEventStream<Self, Result<OutSuccess, any Error>?>> where Value == Result<InSuccess, Error> {
         self
             .compactMap { result in
-
                 result
                     .tryCompactMap(transform)
             }
     }
 
-    public func flatMapErrors<Success, InFailure: Error, OutFailure: Error>(
-        _ transform: @escaping (InFailure) -> Result<Success, OutFailure>
-    ) -> EventStream<Result<Success, OutFailure>> where Value == Result<Success, InFailure> {
-
+    func flatMapErrors<Success, InFailure: Error, OutFailure: Error>(
+        _ transform: @escaping @Sendable (InFailure) -> Result<Success, OutFailure>
+    ) -> MapEventStream<Self, Result<Success, OutFailure>> where Value == Result<Success, InFailure> {
         self
             .map { result in result.flatMapError(transform) }
     }
 
-    public func `catch`<Success, Failure: Error>(
-        _ catcher: @escaping (Failure) -> Success
-    ) -> EventStream<Success> where Value == Result<Success, Failure> {
-
+    func `catch`<Success, Failure: Error>(
+        _ catcher: @escaping @Sendable (Failure) -> Success
+    ) -> MapEventStream<Self, Success> where Value == Result<Success, Failure> {
         self
             .map { result in result.catch(catcher) }
     }
 
-    public func tryCatch<Success, Failure: Error>(
-        _ catcher: @escaping (Failure) throws -> Success
-    ) -> EventStream<Result<Success, Error>> where Value == Result<Success, Failure> {
-
+    func tryCatch<Success, Failure: Error>(
+        _ catcher: @escaping @Sendable (Failure) throws -> Success
+    ) -> MapEventStream<Self, Result<Success, any Error>> where Value == Result<Success, Failure> {
         self
             .map { result in result.tryCatch(catcher) }
     }
 
-    public func ignoreErrors<Success, Failure: Error>() -> EventStream<Success> where Value == Result<Success, Failure> {
-
+    func ignoreErrors<Success, Failure: Error>() -> CompactEventStream<Success, MapEventStream<Self, Success?>> where Value == Result<Success, Failure> {
         self
             .compactMap { result in try? result.get() }
     }

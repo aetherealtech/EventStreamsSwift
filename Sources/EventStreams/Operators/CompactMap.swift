@@ -2,12 +2,10 @@
 //  Created by Daniel Coleman on 1/9/22.
 //
 
-import Foundation
-
-extension EventStream {
-
-    public func compactMap<Result>(_ transform: @escaping (Value) -> Result?) -> EventStream<Result> {
-
+public extension EventStream {
+    func compactMap<Result>(
+        _ transform: @escaping @Sendable (Value) -> Result?
+    ) -> CompactEventStream<Result, MapEventStream<Self, Result?>> {
         self
             .map(transform)
             .compact()

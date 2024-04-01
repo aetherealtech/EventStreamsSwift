@@ -6,12 +6,16 @@ import Foundation
 import Observer
 import Scheduling
 
-extension EventStream {
+public func empty<Value>() -> Empty<Value> {
+    .init()
+}
 
-    public static func empty() -> EventStream<Value> {
-
-        EventStream(
-            channel: SimpleChannel<Value>()
-        )
+public struct Empty<Value>: EventStream {
+    public struct Subscription: Observer.Subscription {
+        public func cancel() {}
+    }
+    
+    public func subscribe(_ onValue: @escaping (Value) -> Void) -> Subscription {
+        .init()
     }
 }

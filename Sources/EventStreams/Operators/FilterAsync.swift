@@ -5,29 +5,33 @@
 import Foundation
 import Observer
 
-public extension EventStream {
-     func filter(
-        _ condition: @Sendable @escaping (Value) -> Bool
-     ) -> FilteredEventStream<Self> {
-         .init(
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public extension EventStream where Value: Sendable {
+    func filter(
+        _ condition: @escaping @Sendable (Value) async -> Bool
+    ) -> FilteredAsyncEventStream<Self> {
+        .init(
             source: self,
             condition: condition
         )
     }
 }
 
-public struct FilteredEventStream<Source: EventStream>: EventStream {
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct FilteredAsyncEventStream<Source: EventStream>: EventStream where Source.Value: Sendable {
     init(
         source: Source,
-        condition: @escaping @Sendable (Source.Value) -> Bool
+        condition: @escaping @Sendable (Source.Value) async -> Bool
     ) {
         self.source = source
         self.condition = condition
 
         self.subscription = source
                 .subscribe { [channel] value in
-                    if condition(value) {
-                        channel.publish(value)
+                    Task {
+                        if await condition(value) {
+                            channel.publish(value)
+                        }
                     }
                 }
                 .autoCancel()
@@ -35,7 +39,7 @@ public struct FilteredEventStream<Source: EventStream>: EventStream {
     }
 
     public let source: Source
-    public let condition: @Sendable (Source.Value) -> Bool
+    public let condition: @Sendable (Source.Value) async -> Bool
     
     public func subscribe(
         _ onValue: @escaping @Sendable (Source.Value) -> Void

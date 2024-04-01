@@ -2,42 +2,39 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
-class SwitchTests: XCTestCase {
- 
+final class SwitchTests: XCTestCase {
     func testSwitch() throws {
-        
-        let source = SimpleChannel<EventStream<String>>()
+        let source = SimpleChannel<ChannelEventStream<SimpleChannel<String>>>()
         
         let testEvents = Array(0..<10)
         
         let innerSources: [SimpleChannel<String>] = testEvents.map { _ in
-         
             SimpleChannel<String>()
         }
         
         let innerStreams = innerSources.map { innerSource in
-         
-            innerSource.asStream()
+            innerSource.stream
         }
 
         var expectedEvents = [String]()
         
-        let sourceStream = source.asStream()
+        let sourceStream = source.stream
         let switchedStream = sourceStream.switch()
         
+        @Synchronized
         var receivedEvents = [String]()
         
-        let subscription = switchedStream.subscribe { event in receivedEvents.append(event) }
+        let _ = switchedStream.subscribe { [_receivedEvents] event in _receivedEvents.wrappedValue.append(event) }
         
         for event in testEvents {
-            
             let innerEvents = (0..<10).map { index in
-            
                 "\(event)-\(index)"
             }
             
@@ -58,16 +55,12 @@ class SwitchTests: XCTestCase {
         obsoleteSources.removeLast()
         
         for (index, innerSource) in obsoleteSources.enumerated() {
-            
             for innerIndex in 0..<10 {
-                
                 let additionalEvent = "Additional event \(innerIndex) from source \(index)"
                 innerSource.publish(additionalEvent)
             }
         }
         
-        XCTAssertEqual(receivedEvents, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
 }

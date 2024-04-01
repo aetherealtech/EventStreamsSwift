@@ -1,52 +1,51 @@
 //
-//  File.swift
-//  
-//
 //  Created by Daniel Coleman on 1/9/22.
 //
 
 import Foundation
 import Observer
+import Synchronization
 
-extension EventStream {
-
-    public func flatten<InnerValue>() -> EventStream<InnerValue> where Value == EventStream<InnerValue> {
-
-        FlattenEventStream(
+public extension EventStream where Value: EventStream {
+    func flatten() -> FlattenEventStream<Self> {
+        .init(
             source: self
         )
     }
 }
 
-class FlattenEventStream<Value> : EventStream<Value>
-{
+public struct FlattenEventStream<Source: EventStream>: EventStream where Source.Value: EventStream {
     init(
-        source: EventStream<EventStream<Value>>
+        source: Source
     ) {
-
-        let eventChannel = SimpleChannel<Value>()
-
         self.source = source
 
-        super.init(
-            channel: eventChannel
-        )
-
         source
-            .subscribe { innerStream in
-
-                self.innerStreams.append(innerStream)
+            .subscribe { [channel, _innerStreams, _subscriptions] innerStream in
+                _innerStreams.wrappedValue.append(innerStream)
 
                 innerStream
-                    .subscribe(eventChannel.publish)
-                    .store(in: &self.subscriptions)
+                    .subscribe { innerValue in channel.publish(innerValue) }
+                    .autoCancel()
+                    .share()
+                    .store(in: &_subscriptions.wrappedValue)
 
             }
-            .store(in: &subscriptions)
+            .autoCancel()
+            .share()
+            .store(in: &_subscriptions.wrappedValue)
     }
 
-    private let source: EventStream<EventStream<Value>>
+    public let source: Source
 
-    private var innerStreams = [EventStream<Value>]()
-    private var subscriptions = Set<Subscription>()
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Source.Value.Value) -> Void
+    ) -> SimpleChannel<Source.Value.Value>.Subscription {
+        channel.subscribe(onValue)
+    }
+    
+    private let _innerStreams = Synchronized<[Source.Value]>(wrappedValue: [])
+    private let _subscriptions = Synchronized<Set<SharedAutoSubscription>>(wrappedValue: [])
+    
+    private let channel = SimpleChannel<Source.Value.Value>()
 }

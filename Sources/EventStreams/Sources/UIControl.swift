@@ -8,93 +8,74 @@ import UIKit
 import Observer
 import Scheduling
 
-extension UIControl {
+public protocol UIControlProtocol: UIControl {}
 
-    private class ControlSubscription : Subscription {
+extension UIControl: UIControlProtocol {}
 
-        private class TargetBridge : NSObject
-        {
-            init(
-                handler: @escaping (UIEvent) -> Void
-            ) {
-
-                self.handler = handler
-            }
-
-            @objc func receive(sender: UIControl, event: UIEvent) {
-
-                handler(event)
-            }
-
-            private let handler: (UIEvent) -> Void
-        }
-
-        init(
-            source: UIControl,
-            event: UIControl.Event,
-            handler: @escaping (UIEvent) -> Void
-        ) {
-            self.source = source
-            self.event = event
-            self.bridge = TargetBridge(handler: handler)
-
-            source.addTarget(bridge, action: #selector(TargetBridge.receive), for: event)
-        }
-
-        deinit {
-
-            source.removeTarget(bridge, action: #selector(TargetBridge.receive), for: event)
-        }
-
-        private let source: UIControl
-        private let event: UIControl.Event
-        private let bridge: TargetBridge
-    }
-
-    func addTarget(event: Event, handler: @escaping (UIEvent) -> Void) -> Subscription {
-
-        ControlSubscription(
-            source: self,
-            event: event,
-            handler: handler
-        )
-    }
-
-    func eventStream(for event: Event) -> EventStream<UIEvent> {
-
-        UIControlEventStream(
-            source: self,
+public extension UIControlProtocol {
+    func stream(
+        for event: Event
+    ) -> UIControlEventStream<Self> {
+        .init(
+            control: self,
             event: event
         )
     }
 }
 
-class UIControlEventStream : EventStream<UIEvent> {
+public struct UIControlEventStream<
+    Control: UIControl
+>: EventStream {
+    public final class Subscription: Observer.Subscription {
+        init(
+            source: Control,
+            event: UIControl.Event,
+            handler: @escaping @Sendable (UIEvent) -> Void
+        ) {
+            self.source = source
+            self.event = event
+            self.handler = handler
 
-    init(
-        source: UIControl,
-        event: UIControl.Event
-    ) {
+            DispatchQueue.main.async {
+                source.addTarget(self, action: #selector(self.receive), for: event)
+            }
+        }
 
-        self.source = source
-        self.event = event
+        public func cancel() {
+            DispatchQueue.main.async {
+                self.source.removeTarget(self, action: #selector(self.receive), for: self.event)
+            }
+        }
 
-        let channel = SimpleChannel<UIEvent>()
+        @objc private func receive(sender: UIControl, event: UIEvent) {
+            handler(event)
+        }
 
-        subscription = source.addTarget(
+        private let source: Control
+        private let event: UIControl.Event
+        private let handler: @Sendable (UIEvent) -> Void
+    }
+    
+    public func subscribe(
+        _ onValue: @escaping @Sendable (UIEvent) -> Void
+    ) -> Subscription {
+        .init(
+            source: control,
             event: event,
-            handler: { event in channel.publish(event) }
-        )
-
-        super.init(
-            channel: channel
+            handler: onValue
         )
     }
 
-    private let source: UIControl
-    private let event: UIControl.Event
+    init(
+        control: Control,
+        event: UIControl.Event
+    ) {
+        self.control = control
+        self.event = event
+    }
 
-    private let subscription: Subscription
+    public let control: Control
+    public let event: UIControl.Event
 }
 
 #endif

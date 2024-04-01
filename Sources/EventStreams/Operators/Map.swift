@@ -5,55 +5,51 @@
 import Foundation
 import Observer
 
-extension EventStream {
-
-    public func map<Result>(_ transform: @escaping (Value) -> Result) -> EventStream<Result> {
-
-        MappedEventStream(
+public extension EventStream {
+    func map<Result>(
+        _ transform: @escaping @Sendable (Value) -> Result
+    ) -> MapEventStream<Self, Result> {
+        .init(
             source: self,
             transform: transform
         )
     }
 
-    public func map<ResultValue>(_ transform: @escaping (Value) throws -> ResultValue) -> EventStream<Result<ResultValue, Error>> {
-
-        map { value in
-
-            do {
-
-                let result = try transform(value)
-                return .success(result)
-
-            } catch(let error) {
-
-                return .failure(error)
-            }
-        }
+    func map<ResultValue>(
+        _ transform: @escaping @Sendable (Value) throws -> ResultValue
+    ) -> MapEventStream<Self, Result<ResultValue, any Error>> {
+        map { value in .init { try transform(value) } }
     }
 }
 
-class MappedEventStream<SourceValue, ResultValue> : EventStream<ResultValue>
-{
+public struct MapEventStream<
+    Source: EventStream,
+    Result
+>: EventStream {
     init(
-        source: EventStream<SourceValue>,
-        transform: @escaping (SourceValue) -> ResultValue
+        source: Source,
+        transform: @escaping @Sendable (Source.Value) -> Result
     ) {
-
-        let channel = SimpleChannel<ResultValue>()
-
         self.source = source
-
-        self.sourceSubscription = source
-                .subscribe { value in
-
-                    channel.publish(transform(value))
-                }
-
-        super.init(
-            channel: channel
-        )
+        self.transform = transform
+        
+        subscription = source
+            .subscribe { [channel] value in
+                channel.publish(transform(value))
+            }
+            .autoCancel()
+            .share()
+    }
+    
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Result) -> Void
+    ) -> SimpleChannel<Result>.Subscription {
+        channel.subscribe(onValue)
     }
 
-    private let source: EventStream<SourceValue>
-    private let sourceSubscription: Subscription
+    public let source: Source
+    public let transform: @Sendable (Source.Value) -> Result
+    
+    private let channel = SimpleChannel<Result>()
+    private let subscription: SharedAutoSubscription
 }

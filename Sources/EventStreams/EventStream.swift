@@ -4,22 +4,48 @@
 
 import Foundation
 import Observer
+import Scheduling
+import Synchronization
 
-open class EventStream<Value> {
+public protocol EventStream<Value>: Sendable {
+    associatedtype Value
+    associatedtype Subscription: Observer.Subscription
+    
+    func subscribe(
+        _ onValue: @escaping @Sendable (Value) -> Void
+    ) -> Subscription
+}
 
-    public init<EventChannel: SubChannel>(
-        channel: EventChannel
-    ) where EventChannel.Value == Value {
-
-        self.eventChannel = channel.erase()
-    }
-
-    public final func subscribe(
-        _ onValue: @escaping (Value) -> Void
+public extension EventStream where Value: Sendable {
+    func subscribe(
+        on scheduler: some Scheduler,
+        _ onValue: @escaping @Sendable (Value) -> Void
     ) -> Subscription {
-
-        eventChannel.subscribe(onValue)
+        subscribe { value in
+            scheduler.run {
+                onValue(value)
+            }
+        }
     }
+}
 
-    private let eventChannel: AnySubChannel<Value>
+public extension EventStream where Value == Void {
+    func subscribe(
+        _ onValue: @escaping @Sendable () -> Void
+    ) -> Subscription {
+        subscribe { _ in onValue() }
+    }
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public extension EventStream where Value: Sendable {
+    func subscribe(
+        _ onValue: @escaping @Sendable (Value) async -> Void
+    ) -> Subscription {
+        subscribe { value in
+            Task {
+                await onValue(value)
+            }
+        }
+    }
 }

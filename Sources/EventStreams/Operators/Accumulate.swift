@@ -4,21 +4,22 @@
 
 import Foundation
 import Observer
+import Synchronization
 
 extension EventStream {
-
     public func accumulate<Result>(
         initialValue: Result,
-        _ accumulator: @escaping (Result, Value) -> Result
-    ) -> EventStream<Result> {
-
+        _ accumulator: @escaping @Sendable (Result, Value) -> Result
+    ) -> MapEventStream<Self, Result> {
+        @Synchronized
         var current = initialValue
-
+        
         return self
-                .map { value -> Result in
-
+            .map { [_current] value -> Result in
+                _current.write { current in
                     current = accumulator(current, value)
                     return current
                 }
+            }
     }
 }

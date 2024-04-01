@@ -2,17 +2,17 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
-class DifferenceTests: XCTestCase {
-
+final class DifferenceTests: XCTestCase {
     func testDifference() throws {
-        
         let source = SimpleChannel<Int>()
-        let sourceStream = source.asStream()
+        let sourceStream = source.stream
         
         let testEvents = (0..<15).map { value in (value * value) + 2 }
         
@@ -22,16 +22,15 @@ class DifferenceTests: XCTestCase {
 
         let differentiatedStream = sourceStream.difference(-)
         
+        @Synchronized
         var receivedEvents = [Int]()
         
-        let subscription = differentiatedStream.subscribe { event in receivedEvents.append(event) }
+        let _ = differentiatedStream.subscribe { [_receivedEvents] event in _receivedEvents.wrappedValue.append(event) }
         
         for event in testEvents {
             source.publish(event)
         }
         
-        XCTAssertEqual(receivedEvents, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
 }

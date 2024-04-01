@@ -4,65 +4,71 @@
 
 import Foundation
 import Observer
+import Synchronization
 
-extension EventStream {
-
-    public func switchMap<Result>(_ transform: @escaping (Value) -> EventStream<Result>) -> EventStream<Result> {
-
+public extension EventStream {
+    func switchMap<Result: EventStream>(
+        _ transform: @escaping @Sendable (Value) -> Result
+    ) -> SwitchEventStream<MapEventStream<Self, Result>> {
         self
             .map(transform)
             .switch()
     }
 
-    public func switchMap<ResultValue>(_ transform: @escaping (Value) throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
-
-        TrySwitchMapEventStream(
+    func switchMap<Result: EventStream>(
+        _ transform: @escaping @Sendable (Value) throws -> Result
+    ) -> TrySwitchMapEventStream<Self, Result> {
+        .init(
             source: self,
             transform: transform
         )
     }
 }
 
-class TrySwitchMapEventStream<Input, Value> : EventStream<Result<Value, Error>>
-{
+public struct TrySwitchMapEventStream<
+    Source: EventStream,
+    ResultValue: EventStream
+>: EventStream {
+    public typealias Value = Result<ResultValue.Value, any Error>
+    
     init(
-        source: EventStream<Input>,
-        transform: @escaping (Input) throws -> EventStream<Value>
+        source: Source,
+        transform: @escaping @Sendable (Source.Value) throws -> ResultValue
     ) {
-
-        let eventChannel = SimpleChannel<Result<Value, Error>>()
-
         self.source = source
+        self.transform = transform
 
-        super.init(
-            channel: eventChannel
-        )
-
-        outerSubscription = source
-            .subscribe { outerEvent in
-
+        self.outerSubscription = source
+            .subscribe { [channel, _innerStream, _innerSubscription] outerValue in
                 do {
-
-                    let innerStream = try transform(outerEvent)
-
-                    self.innerSource = innerStream
-
-                    self.innerSubscription = innerStream
-                        .subscribe  { value in
-
-                            eventChannel.publish(.success(value))
-                        }
-
-                } catch(let error) {
-
-                    eventChannel.publish(.failure(error))
+                    let innerStream = try transform(outerValue)
+                    _innerStream.wrappedValue = innerStream
+                    
+                    _innerSubscription.wrappedValue = innerStream
+                        .subscribe { innerValue in channel.publish(.success(innerValue)) }
+                        .autoCancel()
+                        .share()
+                } catch {
+                    channel.publish(.failure(error))
                 }
             }
+            .autoCancel()
+            .share()
     }
 
-    private let source: EventStream<Input>
-    private var innerSource: EventStream<Value>?
-
-    private var outerSubscription: Subscription? = nil
-    private var innerSubscription: Subscription? = nil
+    public let source: Source
+    public let transform: @Sendable (Source.Value) throws -> ResultValue
+    
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Value) -> Void
+    ) -> SimpleChannel<Value>.Subscription {
+        channel.subscribe(onValue)
+    }
+    
+    private let _innerStream = Synchronized<ResultValue?>(wrappedValue: nil)
+    
+    private let outerSubscription: SharedAutoSubscription
+    private let _innerSubscription = Synchronized<SharedAutoSubscription?>(wrappedValue: nil)
+    
+    private let channel = SimpleChannel<Value>()
 }

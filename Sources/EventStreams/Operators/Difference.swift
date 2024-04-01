@@ -5,21 +5,18 @@
 import Foundation
 import Observer
 
-extension EventStream {
-
-    public func difference<Result>(
+public extension EventStream {
+    func difference<Result>(
         initialValue: Value? = nil,
-        _ differentiator: @escaping (Value, Value) -> Result
-    ) -> EventStream<Result> {
-
+        _ differentiator: @escaping @Sendable (Value, Value) -> Result
+    ) -> MapEventStream<CollectEventStream<Self>, Result> {
         self
-                .buffer(count: 2, stride: 1)
-                .map { values -> Result in
-
-                    let previous = values[0]
-                    let current = values[1]
-
-                    return differentiator(current, previous)
-                }
+            .collect(count: 2, stride: 1)
+            .map { values -> Result in
+                let previous = values[0]
+                let current = values[1]
+                
+                return differentiator(current, previous)
+            }
     }
 }

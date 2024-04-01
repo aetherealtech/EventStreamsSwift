@@ -2,15 +2,15 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
-class CompactTests: XCTestCase {
-
+final class CompactTests: XCTestCase {
     func testCompact() throws {
-        
         let source = SimpleChannel<Int?>()
         
         let testEvents = [
@@ -28,19 +28,18 @@ class CompactTests: XCTestCase {
                 
         let expectedEvents = testEvents.compact()
         
-        let sourceStream = source.asStream()
+        let sourceStream = source.stream
         let compactedStream = sourceStream.compact()
         
+        @Synchronized
         var receivedEvents = [Int]()
         
-        let subscription = compactedStream.subscribe { event in receivedEvents.append(event) }
+        let _ = compactedStream.subscribe { [_receivedEvents] event in _receivedEvents.wrappedValue.append(event) }
         
         for event in testEvents {
             source.publish(event)
         }
         
-        XCTAssertEqual(receivedEvents, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
 }

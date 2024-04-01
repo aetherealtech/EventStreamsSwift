@@ -7,149 +7,62 @@
 import UIKit
 import Observer
 
-extension UIGestureRecognizer {
+public protocol UIGestureRecognizerProtocol: UIGestureRecognizer {}
 
-    private class GestureRecognizerSubscription<Recognizer: UIGestureRecognizer> : Subscription {
+extension UIGestureRecognizer: UIGestureRecognizerProtocol {}
 
-        private class TargetBridge
-        {
-            init(
-                handler: @escaping (Recognizer) -> Void
-            ) {
+public extension UIGestureRecognizerProtocol {
+    var stream: UIGestureRecognizerEventStream<Self> {
+        .init(gestureRecoginizer: self)
+    }
+}
 
-                self.handler = handler
-            }
-
-            @objc func receive(sender: UIGestureRecognizer) {
-
-                handler(sender as! Recognizer)
-            }
-
-            private let handler: (Recognizer) -> Void
-        }
-
+public struct UIGestureRecognizerEventStream<
+    Recognizer: UIGestureRecognizer
+> : EventStream {
+    public final class Subscription: Observer.Subscription {
         init(
             recognizer: Recognizer,
-            handler: @escaping (Recognizer) -> Void
+            handler: @escaping @Sendable (Recognizer) -> Void
         ) {
             self.recognizer = recognizer
-            self.bridge = TargetBridge(handler: handler)
+            self.handler = handler
 
-            recognizer.addTarget(bridge, action: #selector(TargetBridge.receive))
+            DispatchQueue.main.async {
+                recognizer.addTarget(self, action: #selector(self.receive))
+            }
         }
 
-        deinit {
-
-            recognizer.removeTarget(bridge, action: #selector(TargetBridge.receive))
+        public func cancel() {
+            DispatchQueue.main.async {
+                self.recognizer.removeTarget(self, action: #selector(self.receive))
+            }
+        }
+        
+        @objc private func receive(sender: UIGestureRecognizer) {
+            handler(sender as! Recognizer)
         }
 
         private let recognizer: Recognizer
-        private let bridge: TargetBridge
+        private let handler: @Sendable (Recognizer) -> Void
     }
 
-    static func addTarget<Recognizer: UIGestureRecognizer>(
-        recognizer: Recognizer,
-        handler: @escaping (Recognizer) -> Void
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Recognizer) -> Void
     ) -> Subscription {
-
-        GestureRecognizerSubscription(
-            recognizer: recognizer,
-            handler: handler
+        .init(
+            recognizer: gestureRecoginizer,
+            handler: onValue
         )
     }
-
-    static func eventStream<Recognizer: UIGestureRecognizer>(
-        recognizer: Recognizer
-    ) -> EventStream<Recognizer> {
-        
-        UIGestureRecognizerEventStream(source: recognizer)
-    }
-}
-
-class UIGestureRecognizerEventStream<Recognizer: UIGestureRecognizer> : EventStream<Recognizer> {
-
+    
     init(
-        source: Recognizer
+        gestureRecoginizer: Recognizer
     ) {
-
-        self.source = source
-
-        let channel = SimpleChannel<Recognizer>()
-
-        subscription = UIGestureRecognizer.addTarget(
-            recognizer: source,
-            handler: { event in channel.publish(event) }
-        )
-
-        super.init(
-            channel: channel
-        )
+        self.gestureRecoginizer = gestureRecoginizer
     }
 
-    private let source: Recognizer
-
-    private let subscription: Subscription
+    public let gestureRecoginizer: Recognizer
 }
-
-extension UITapGestureRecognizer {
-
-    func eventStream() -> EventStream<UITapGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-
-#if !os(tvOS)
-extension UIPinchGestureRecognizer {
-
-    func eventStream() -> EventStream<UIPinchGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-
-extension UIRotationGestureRecognizer {
-
-    func eventStream() -> EventStream<UIRotationGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-#endif
-
-extension UISwipeGestureRecognizer {
-
-    func eventStream() -> EventStream<UISwipeGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-
-extension UIPanGestureRecognizer {
-
-    func eventStream() -> EventStream<UIPanGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-
-extension UILongPressGestureRecognizer {
-
-    func eventStream() -> EventStream<UILongPressGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-
-#if !os(tvOS)
-@available(iOS 13.0, *)
-extension UIHoverGestureRecognizer {
-
-    func eventStream() -> EventStream<UIHoverGestureRecognizer> {
-
-        UITapGestureRecognizer.eventStream(recognizer: self)
-    }
-}
-#endif
 
 #endif

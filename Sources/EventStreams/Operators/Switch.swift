@@ -4,44 +4,48 @@
 
 import Foundation
 import Observer
+import Synchronization
 
-extension EventStream {
-
-    public func `switch`<InnerValue>() -> EventStream<InnerValue> where Value == EventStream<InnerValue> {
-
-        SwitchEventStream(
+public extension EventStream where Value: EventStream {
+    func `switch`() -> SwitchEventStream<Self> {
+        .init(
             source: self
         )
     }
 }
 
-class SwitchEventStream<Value> : EventStream<Value>
-{
+public struct SwitchEventStream<Source: EventStream>: EventStream where Source.Value: EventStream {
     init(
-        source: EventStream<EventStream<Value>>
+        source: Source
     ) {
-
-        let eventChannel = SimpleChannel<Value>()
-
         self.source = source
 
-        super.init(
-            channel: eventChannel
-        )
+        self.outerSubscription = source
+            .subscribe { [channel, _innerStream, _innerSubscription] innerStream in
+                _innerStream.wrappedValue = innerStream
 
-        outerSubscription = source
-            .subscribe { innerStream in
+                _innerSubscription.wrappedValue = innerStream
+                    .subscribe { innerValue in channel.publish(innerValue) }
+                    .autoCancel()
+                    .share()
 
-                self.innerSource = innerStream
-
-                self.innerSubscription = innerStream
-                    .subscribe( eventChannel.publish )
             }
+            .autoCancel()
+            .share()
     }
 
-    private let source: EventStream<EventStream<Value>>
-    private var innerSource: EventStream<Value>?
+    public let source: Source
 
-    private var outerSubscription: Subscription? = nil
-    private var innerSubscription: Subscription? = nil
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Source.Value.Value) -> Void
+    ) -> SimpleChannel<Source.Value.Value>.Subscription {
+        channel.subscribe(onValue)
+    }
+    
+    private let _innerStream = Synchronized<Source.Value?>(wrappedValue: nil)
+    
+    private let outerSubscription: SharedAutoSubscription
+    private let _innerSubscription = Synchronized<SharedAutoSubscription?>(wrappedValue: nil)
+    
+    private let channel = SimpleChannel<Source.Value.Value>()
 }

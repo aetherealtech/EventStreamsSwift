@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.10
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,30 +6,54 @@ import PackageDescription
 let package = Package(
     name: "EventStreams",
     products: [
-        // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
             name: "EventStreams",
-            targets: ["EventStreams"]),
+            targets: ["EventStreams"]
+        ),
     ],
     dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/aetherealtech/SwiftCoreExtensions.git", .branch("master")),
-        .package(url: "https://github.com/aetherealtech/SwiftObserver.git", .branch("master")),
-        .package(url: "https://github.com/aetherealtech/SwiftScheduling.git", .branch("master"))
+        .package(url: "https://github.com/aetherealtech/swift-assertions", branch: "master"),
+        .package(url: "https://github.com/aetherealtech/swift-core-extensions", branch: "master"),
+        .package(url: "https://github.com/aetherealtech/swift-observer", branch: "master"),
+        .package(url: "https://github.com/aetherealtech/swift-scheduling", branch: "master"),
+        .package(url: "https://github.com/aetherealtech/swift-synchronization", branch: "master"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "EventStreams",
             dependencies: [
-                .product(name: "CoreExtensions", package: "SwiftCoreExtensions"),
-                .product(name: "Observer", package: "SwiftObserver"),
-                .product(name: "Scheduling", package: "SwiftScheduling")
-            ]),
+                .product(name: "CollectionExtensions", package: "swift-core-extensions"),
+                .product(name: "Observer", package: "swift-observer"),
+                .product(name: "ResultExtensions", package: "swift-core-extensions"),
+                .product(name: "Scheduling", package: "swift-scheduling"),
+                .product(name: "Synchronization", package: "swift-synchronization"),
+            ],
+            swiftSettings: [.concurrencyChecking(.complete)]
+        ),
         .testTarget(
             name: "EventStreamsTests",
-            dependencies: ["EventStreams"]),
+            dependencies: [
+                "EventStreams",
+                .product(name: "Assertions", package: "swift-assertions"),
+                .product(name: "SchedulingTestUtilities", package: "swift-scheduling"),
+            ],
+            swiftSettings: [.concurrencyChecking(.complete)]
+        ),
     ]
 )
+
+extension SwiftSetting {
+    enum ConcurrencyChecking: String {
+        case complete
+        case minimal
+        case targeted
+    }
+    
+    static func concurrencyChecking(_ setting: ConcurrencyChecking = .minimal) -> Self {
+        unsafeFlags([
+            "-Xfrontend", "-strict-concurrency=\(setting)",
+            "-Xfrontend", "-warn-concurrency",
+            "-Xfrontend", "-enable-actor-data-race-checks",
+        ])
+    }
+}

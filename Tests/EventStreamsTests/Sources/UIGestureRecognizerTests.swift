@@ -4,15 +4,15 @@
 
 #if !os(macOS) && !os(watchOS)
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
-class UIGestureRecognizerTests: XCTestCase {
-
+final class UIGestureRecognizerTests: XCTestCase {
     func testEventStream() throws {
-
         // TODO: Decide the best way to test this
     }
 }

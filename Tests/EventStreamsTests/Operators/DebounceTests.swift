@@ -2,29 +2,30 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Scheduling
+import Synchronization
+
 @testable import EventStreams
 
-class DebounceTests: XCTestCase {
-
+final class DebounceTests: XCTestCase {
     func testDebounce() throws {
-        
         let source = SimpleChannel<String>()
-        let sourceStream = source.asStream()
+        let sourceStream = source.stream
          
         var expectedEvents = [String]()
 
-        let tolerance: TimeInterval = 0.25
+        let tolerance = 0.25.seconds
         let debouncedStream = sourceStream.debounce(tolerance: tolerance)
         
+        @Synchronized
         var receivedEvents = [String]()
         
-        let subscription = debouncedStream.subscribe { event in receivedEvents.append(event) }
+        let _ = debouncedStream.subscribe { [_receivedEvents] event in _receivedEvents.wrappedValue.append(event) }
         
         for index in 0..<10 {
-            
             let firstEvent = "Event \(index)"
             let secondEvent = "Echo \(index)"
 
@@ -33,11 +34,9 @@ class DebounceTests: XCTestCase {
             
             expectedEvents.append(firstEvent)
             
-            Thread.sleep(forTimeInterval: tolerance)
+            Thread.sleep(forTimeInterval: tolerance / 1.seconds)
         }
 
-        XCTAssertEqual(receivedEvents, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
 }

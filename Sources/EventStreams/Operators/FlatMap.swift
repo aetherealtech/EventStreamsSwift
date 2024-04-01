@@ -1,74 +1,70 @@
 //
-//  File.swift
-//  
-//
 //  Created by Daniel Coleman on 1/9/22.
 //
 
 import Foundation
 import Observer
+import Synchronization
 
-extension EventStream {
-
-    public func flatMap<Result>(_ transform: @escaping (Value) -> EventStream<Result>) -> EventStream<Result> {
-
+public extension EventStream {
+    func flatMap<Result: EventStream>(_ transform: @escaping @Sendable (Value) -> Result) -> FlattenEventStream<MapEventStream<Self, Result>> {
         self
             .map(transform)
             .flatten()
     }
 
-    public func flatMap<ResultValue>(_ transform: @escaping (Value) throws -> EventStream<ResultValue>) -> EventStream<Result<ResultValue, Error>> {
-
-        TryFlatMapEventStream(
+    func flatMap<ResultValue>(_ transform: @escaping @Sendable (Value) throws -> ResultValue) -> TryFlatMapEventStream<Self, ResultValue> {
+        .init(
             source: self,
             transform: transform
         )
     }
 }
 
-class TryFlatMapEventStream<Input, Value> : EventStream<Result<Value, Error>>
-{
+public struct TryFlatMapEventStream<
+    Source: EventStream,
+    ResultValue: EventStream
+>: EventStream {
+    public typealias Value = Result<ResultValue.Value, any Error>
+    
     init(
-        source: EventStream<Input>,
-        transform: @escaping (Input) throws -> EventStream<Value>
+        source: Source,
+        transform: @escaping @Sendable (Source.Value) throws -> ResultValue
     ) {
-
-        let eventChannel = SimpleChannel<Result<Value, Error>>()
-
         self.source = source
-
-        super.init(
-            channel: eventChannel
-        )
+        self.transform = transform
 
         source
-            .subscribe { outerValue in
-
-                let innerStream: EventStream<Value>
-
+            .subscribe { [channel, _innerStreams, _subscriptions] outerValue in
                 do {
-
-                    innerStream = try transform(outerValue)
-
-                    self.innerStreams.append(innerStream)
-
+                    let innerStream = try transform(outerValue)
+                    _innerStreams.wrappedValue.append(innerStream)
+                    
                     innerStream
-                        .subscribe { innerValue in
-
-                            eventChannel.publish(.success(innerValue))
-                        }
-                        .store(in: &self.subscriptions)
-
-                } catch(let error) {
-
-                    eventChannel.publish(.failure(error))
+                        .subscribe { innerValue in channel.publish(.success(innerValue)) }
+                        .autoCancel()
+                        .share()
+                        .store(in: &_subscriptions.wrappedValue)
+                } catch {
+                    channel.publish(.failure(error))
                 }
             }
-            .store(in: &subscriptions)
+            .autoCancel()
+            .share()
+            .store(in: &_subscriptions.wrappedValue)
     }
 
-    private let source: EventStream<Input>
-
-    private var innerStreams = [EventStream<Value>]()
-    private var subscriptions = Set<Subscription>()
+    public let source: Source
+    public let transform: @Sendable (Source.Value) throws -> ResultValue
+    
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Value) -> Void
+    ) -> SimpleChannel<Value>.Subscription {
+        channel.subscribe(onValue)
+    }
+    
+    private let _innerStreams = Synchronized<[ResultValue]>(wrappedValue: [])
+    private let _subscriptions = Synchronized<Set<SharedAutoSubscription>>(wrappedValue: [])
+    
+    private let channel = SimpleChannel<Value>()
 }

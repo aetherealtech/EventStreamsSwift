@@ -2,17 +2,17 @@
 //  Created by Daniel Coleman on 11/18/21.
 //
 
+import Assertions
 import XCTest
-
 import Observer
+import Synchronization
+
 @testable import EventStreams
 
-class BufferTests: XCTestCase {
-
-    func testBufferOverlap() throws {
-        
+final class CollectTests: XCTestCase {
+    func testCollectOverlap() throws {
         let source = SimpleChannel<Int>()
-        let sourceStream = source.asStream()
+        let sourceStream = source.stream
         
         let size = 10
         let stride = 7
@@ -21,32 +21,29 @@ class BufferTests: XCTestCase {
         let testEvents = Array(0..<total)
         
         let expectedEvents = (0..<size-1).map { index in
-            
             (0..<size).map { innerIndex in
-                
                 index * stride + innerIndex
             }
         }
 
-        let bufferedStream = sourceStream.buffer(count: size, stride: stride)
+        let collectedStream = sourceStream
+            .collect(count: size, stride: stride)
         
+        @Synchronized
         var receivedEvents = [[Int]]()
         
-        let subscription = bufferedStream.subscribe { event in receivedEvents.append(event) }
+        let _ = collectedStream.subscribe { [_receivedEvents] event in _receivedEvents.wrappedValue.append(event) }
         
         for event in testEvents {
             source.publish(event)
         }
         
-        XCTAssertEqual(receivedEvents, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
     
-    func testBufferGaps() throws {
-        
+    func testCollectGaps() throws {
         let source = SimpleChannel<Int>()
-        let sourceStream = source.asStream()
+        let sourceStream = source.stream
         
         let size = 7
         let stride = 10
@@ -55,25 +52,22 @@ class BufferTests: XCTestCase {
         let testEvents = Array(0..<total)
         
         let expectedEvents = (0..<stride).map { index in
-            
             (0..<size).map { innerIndex in
-                
                 index * stride + innerIndex
             }
         }
 
-        let bufferedStream = sourceStream.buffer(count: size, stride: stride)
-        
+        let collectedStream = sourceStream.collect(count: size, stride: stride)
+    
+        @Synchronized
         var receivedEvents = [[Int]]()
         
-        let subscription = bufferedStream.subscribe { event in receivedEvents.append(event) }
-        
+        let _ = collectedStream.subscribe { [_receivedEvents] event in _receivedEvents.wrappedValue.append(event) }
+
         for event in testEvents {
             source.publish(event)
         }
         
-        XCTAssertEqual(receivedEvents, expectedEvents)
-
-        withExtendedLifetime(subscription) { }
+        try assertEqual(receivedEvents, expectedEvents)
     }
 }

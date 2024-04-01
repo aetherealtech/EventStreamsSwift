@@ -3,94 +3,78 @@
 //
 
 import Foundation
-import CoreExtensions
 import Observer
+import ResultExtensions
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-extension EventStream {
-
-    public func await<Success>() -> EventStream<Result<Success, Error>> where Value == Task<Success, Error> {
-
-        TryAwaitEventStream(
+public extension EventStream {
+    func await<Success>() -> AwaitEventStream<Success, Self> where Value == Task<Success, Never> {
+        .init(
             source: self
         )
     }
-
-    public func await<Success>() -> EventStream<Success> where Value == Task<Success, Never> {
-
-        AwaitEventStream(
+    
+    func await<Success>() -> TryAwaitEventStream<Success, Self> where Value == Task<Success, Error> {
+        .init(
             source: self
         )
     }
 }
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-class AwaitEventStream<Value> : EventStream<Value>
-{
+public struct AwaitEventStream<Value, Source: EventStream<Task<Value, Never>>>: EventStream {
     init(
-        source: EventStream<Task<Value, Never>>
+        source: Source
     ) {
-
-        let channel = SimpleChannel<Value>()
-
         self.source = source
-
-        self.sourceSubscription = source.subscribe { task in
-
-            Task {
-
-                channel.publish(await task.value)
+        
+        self.subscription = source
+            .subscribe { [channel] task in
+                Task { channel.publish(await task.value) }
             }
-        }
-
-        super.init(
-            channel: channel
-        )
+            .autoCancel()
+            .share()
     }
 
-    private let source: EventStream<Task<Value, Never>>
+    public let source: Source
+    
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Value) -> Void
+    ) -> SimpleChannel<Value>.Subscription {
+        channel.subscribe(onValue)
+    }
 
-    private let sourceSubscription: Subscription
+    private let channel = SimpleChannel<Value>()
+    private let subscription: SharedAutoSubscription
 }
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-class TryAwaitEventStream<Success> : EventStream<Result<Success, Error>>
-{
+public struct TryAwaitEventStream<Success, Source: EventStream<Task<Success, any Error>>>: EventStream {
+    public typealias Value = Result<Success, any Error>
+    
     init(
-        source: EventStream<Task<Success, Error>>
+        source: Source
     ) {
-
-        let channel = SimpleChannel<Result<Success, Error>>()
-
         self.source = source
-
-        self.sourceSubscription = source.subscribe(
-            { task in
-
+        
+        self.subscription = source
+            .subscribe { [channel] task in
                 Task {
-
-                    let result: Result<Success, Error>
-
-                    do {
-
-                        result = .success(try await task.value)
-                    }
-                    catch(let error) {
-
-                        result = .failure(error)
-                    }
-
-                    channel.publish(result)
+                    channel.publish(await .init { try await task.value })
                 }
             }
-        )
-
-        super.init(
-            channel: channel
-        )
+            .autoCancel()
+            .share()
     }
 
-    private let source: EventStream<Task<Success, Error>>
+    public let source: Source
+    
+    public func subscribe(
+        _ onValue: @escaping @Sendable (Value) -> Void
+    ) -> SimpleChannel<Value>.Subscription {
+        channel.subscribe(onValue)
+    }
 
-    private let sourceSubscription: Subscription
+    private let channel = SimpleChannel<Value>()
+    private let subscription: SharedAutoSubscription
 }
